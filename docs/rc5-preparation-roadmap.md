@@ -8,7 +8,7 @@ SDK baseline: `0.1.0-rc.4`; private workspace version: `0.1.0`.
 2. Report delivery: recover from URL encoding failures, invalidate edited outputs, create a dedicated offline evidence brief from an allowlisted aggregate projection. Prefer original JSON, disclose URL fidelity limits, support explicit site labels, escape all output, include coverage and limitations, print styling and engineering handoff. No live-page serialization, scripts, telemetry, forms, storage, network, or new dependencies.
 3. Documentation and release preparation: correct privacy/sampling claims, add opt-in path normalization if compatible, route prereleases to npm `next` and stable to `latest`. Run lint, types, unit, build, budgets, boundaries, export/pack checks, `test:cli:pack`, and available browser checks. Record unavailable BigQuery, framework, package-manager, and Node-version gates honestly.
 
-Constraints: preserve original checkout/user changes; work on `codex/rc5-evidence-preparation` in an isolated checkout. No push, merge, publication, scheduling, provisioned environment, or dependency additions. No causal/revenue claims. No release readiness claim until manual gates pass.
+Constraints: preserve original checkout/user changes; work on `codex/rc5-evidence-preparation` in an isolated checkout. No push, merge, publication, scheduling, hosted environments, or Signal runtime dependency additions. The later user approval permits isolated test-only runtimes, browsers, image QA tooling, and fresh framework fixtures; it does not permit credentials or access creation. No causal/revenue claims. No release readiness claim until manual gates pass.
 
 
 Implementation complete locally; validation and unresolved gates are recorded in

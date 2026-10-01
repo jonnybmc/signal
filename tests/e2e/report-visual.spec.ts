@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
   affirmingAggregateFixture,
@@ -5,13 +6,18 @@ import {
   lowInpCoverageAggregateFixture,
   strongLcpCoverageAggregateFixture
 } from '../../packages/signal-contracts/src/index.ts';
+import { REPORT_ORIGIN } from './server-origins';
 
 // Visual baselines for the RC3 redesign — vertical scroll narrative, light
 // theme default, Signifier typography. Snapshots are scoped per section
 // and refreshed via `pnpm test:e2e:visual:update` when the design lands
 // or shifts.
+// Fixed viewport chrome otherwise overlays headings in full-section captures.
+// Navigation and progress remain visible in the separate functional suite.
+const screenshotStylePath = path.join(__dirname, 'report-screenshot.css');
+
 function buildReportUrl(aggregate: Parameters<typeof encodeSignalReportUrl>[0]) {
-  const encoded = encodeSignalReportUrl(aggregate, 'http://localhost:4174/r').url;
+  const encoded = encodeSignalReportUrl(aggregate, `${REPORT_ORIGIN}/r`).url;
   return encoded;
 }
 
@@ -28,7 +34,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await cover.scrollIntoViewIfNeeded();
     await expect(cover).toHaveScreenshot('report-cover.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -38,7 +45,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await audience.scrollIntoViewIfNeeded();
     await expect(audience).toHaveScreenshot('report-audience.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -48,7 +56,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await distance.scrollIntoViewIfNeeded();
     await expect(distance).toHaveScreenshot('report-distance.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -58,7 +67,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await funnel.scrollIntoViewIfNeeded();
     await expect(funnel).toHaveScreenshot('report-funnel.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -68,7 +78,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await funnel.scrollIntoViewIfNeeded();
     await expect(funnel).toHaveScreenshot('report-funnel-reduced.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -78,7 +89,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await business.scrollIntoViewIfNeeded();
     await expect(business).toHaveScreenshot('report-business.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 
@@ -88,7 +100,8 @@ test.describe('report visual regression — vertical scroll narrative', () => {
     await funnel.scrollIntoViewIfNeeded();
     await expect(funnel).toHaveScreenshot('report-funnel-affirming.png', {
       animations: 'disabled',
-      caret: 'hide'
+      caret: 'hide',
+      stylePath: screenshotStylePath
     });
   });
 });

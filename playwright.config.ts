@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { REPORT_ORIGIN, SPIKE_ORIGIN } from './tests/e2e/server-origins';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -9,7 +10,7 @@ export default defineConfig({
     // Skip the landing entrance orchestration in e2e lanes so tests land in
     // final state immediately. `reducedMotion: 'reduce'` also zeros all
     // CSS transitions via the --sr-motion-* tokens → deterministic runs.
-    reducedMotion: 'reduce'
+    contextOptions: { reducedMotion: 'reduce' }
   },
   projects: [
     {
@@ -27,14 +28,15 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm dev:report',
-      port: 4174,
-      reuseExistingServer: true
+      command: 'pnpm --filter @stroma-labs/signal-report-app dev --host 127.0.0.1 --port 44174 --strictPort',
+      url: REPORT_ORIGIN,
+      reuseExistingServer: false
     },
     {
-      command: 'pnpm dev:spike',
-      port: 4173,
-      reuseExistingServer: true
+      command: 'pnpm --filter @stroma-labs/signal-spike-lab dev --host 127.0.0.1 --port 44173 --strictPort',
+      url: SPIKE_ORIGIN,
+      env: { VITE_SIGNAL_REPORT_BASE_URL: `${REPORT_ORIGIN}/r` },
+      reuseExistingServer: false
     }
   ]
 });

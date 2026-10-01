@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { REPORT_ORIGIN } from './server-origins';
 
 test('builder invalidates edited output, catches URL size failures, and recovers', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   const input = page.locator('#aggregate-input');
   const original = await input.inputValue();
   await page.locator('#generate-url').click();
@@ -34,9 +35,10 @@ test('builder invalidates edited output, catches URL size failures, and recovers
 
 test('downloaded file is readable offline with JS disabled, no requests, and print layout', async ({
   page,
-  browser
+  browser,
+  browserName
 }, testInfo) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   const aggregate = JSON.parse(await page.locator('#aggregate-input').inputValue());
   aggregate.domain = 'private-client.example';
   aggregate.top_page_path = '/people/private-person';
@@ -49,7 +51,9 @@ test('downloaded file is readable offline with JS disabled, no requests, and pri
   await download.saveAs(path);
   const html = readFileSync(path, 'utf8');
   expect(html).not.toMatch(/private-client|private-person|<script|<form|<img|localStorage|sendBeacon/);
-  const context = await browser.newContext({ javaScriptEnabled: false, offline: true });
+  // WebKit's offline emulation rejects even a minimal file:// document on
+  // macOS. Its HTTP(S) requests are still recorded and blocked below.
+  const context = await browser.newContext({ javaScriptEnabled: false, offline: browserName !== 'webkit' });
   const requests: string[] = [];
   await context.route(/^https?:/, (route) => {
     requests.push(route.request().url());
@@ -67,8 +71,12 @@ test('downloaded file is readable offline with JS disabled, no requests, and pri
   await context.close();
 });
 
-test('explicit labels are escaped and the file writes no browser storage', async ({ page, browser }, testInfo) => {
-  await page.goto('http://localhost:4174/build/');
+test('explicit labels are escaped and the file writes no browser storage', async ({
+  page,
+  browser,
+  browserName
+}, testInfo) => {
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   const aggregate = JSON.parse(await page.locator('#aggregate-input').inputValue());
   aggregate.top_page_path = '/<script>window.__injected=true</script>';
   await page.locator('#aggregate-input').fill(JSON.stringify(aggregate));
@@ -77,7 +85,8 @@ test('explicit labels are escaped and the file writes no browser storage', async
   await page.locator('#download-brief').click();
   const path = testInfo.outputPath('labeled-brief.html');
   await (await downloading).saveAs(path);
-  const context = await browser.newContext({ offline: true });
+  const context = await browser.newContext({ offline: browserName !== 'webkit' });
+  await context.route(/^https?:/, (route) => route.abort());
   const offline = await context.newPage();
   const requests: string[] = [];
   offline.on('request', (request) => {

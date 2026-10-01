@@ -3,6 +3,10 @@
 This is local preparation, not release approval. Base: `8185b8460297f953df727af93e8f5c5c7f6c204d`.
 Branch: `codex/rc5-evidence-preparation`. SDK version remains `0.1.0-rc.4`.
 No release date, tag, push, merge, publication, or schedule was created.
+The first implementation is preserved as commit `a1aa9ab3c4562f24de80c4f2870114e1bf5a5d71`.
+The follow-up adds scroll-spy/reduced-motion fixes, isolated browser test servers and
+reviewed Darwin baselines, correct CI-command documentation, and this expanded
+validation evidence. It does not change SDK/runtime dependencies or the private graph.
 
 ## Implemented and reviewed
 
@@ -16,32 +20,105 @@ No release date, tag, push, merge, publication, or schedule was created.
 
 ## Automated checks
 
-Environment: existing connected Mac, Node `25.6.1`, pnpm `10.28.2`.
-No new direct dependencies or framework/browser environments were added. Existing dependency versions were updated for the authorized security cleanup.
+Validation used the existing connected Mac and pnpm **10.28.2**. After the first
+implementation commit, the user explicitly authorized isolated test-only setup.
+Checksum-verified official Node runtimes and the official Bun release live in
+`../test-tools/`; five fresh projects live in `../framework-smokes/`. Playwright WebKit 2272 was installed
+into its normal browser cache. No Signal runtime dependency, hosted service,
+credential, or access-policy change was made. The package still has zero runtime
+dependencies. Existing public dependency versions changed only in the first
+implementation's scoped security cleanup.
 
-| Check | Result |
+| Check | Final result |
 |---|---|
-| `pnpm lint` | Pass; 37 existing warnings and one informational diagnostic remain |
-| `pnpm typecheck` | Pass (contracts and SDK; root command does not typecheck report app) |
-| `pnpm test:unit` | 3,700 passed, 55 files, no skips once built CLI was available |
-| Final focused observer/offline unit run | 59 passed, including the single-call normalization regression |
-| `pnpm build` | Pass: contracts, SDK, CLI, both public apps |
-| Build export/boundary/budget gates | Pass; ceilings unchanged |
-| `pnpm test:cli:pack` | npm, pnpm, yarn passed; Bun skipped because not installed |
-| `pnpm check:release` | Metadata, pack contents and artifact checks passed; does not satisfy the manual gates below |
-| Chromium and Firefox smoke/offline checks | 46 passed across the two browsers in the full run |
-| Final offline browser run after layout refinements | 6 passed (3 each in Chromium and Firefox) |
-| `pnpm test:e2e --update-snapshots=none` | 46 passed, 30 failed, 14 intentional skips: 7 missing macOS visual baselines and 23 WebKit launch failures (expected `webkit-2272` absent). No screenshot comparison was blessed and no baseline was created |
-| Direct report-app `tsc --noEmit` | 17 existing errors remain; same errors reproduce in unmodified base, which has 41 total. Builder narrowing removes 24 baseline errors. No new report-app type errors |
+| `pnpm run ci` on Node 22.23.3 | Pass: lint, root types, 3,700 unit tests in 55 files, build, exports, boundaries, budgets and release metadata/pack audit |
+| `pnpm run ci` on Node 24.21.0 | Pass: same 3,700 tests and gates; matches the publication workflow's Node major |
+| `pnpm lint` | Pass; 37 existing warnings and one informational diagnostic |
+| `pnpm typecheck` | Pass (contracts/SDK; this root command does not typecheck the report app) |
+| `pnpm test:cli:pack` on Node 22.23.3 | npm, pnpm, yarn, Bun 1.4.2 all pass; no package-manager skips |
+| Installed package consumer matrix | All four public imports and packed CLI init pass on Node 18.20.8, 20.20.2, 22.23.3 and 24.21.0 |
+| Full browser matrix, snapshot updates disabled | **76 passed, 14 intentional skips, 0 failed**: Chromium 30 passed; Firefox/WebKit 23 each; 7 Chromium-only visual tests skipped in each other engine |
+| Chromium section visual baselines | Seven new macOS baselines, reviewed against unmodified main and final expected rendering |
+| Direct report-app `tsc --noEmit` | 17 baseline errors remain; the same errors reproduce in unmodified base (41 total). No new report-app type errors |
 
-Final compressed closure sizes: runtime **6,980 bytes / 7 KiB**, runtime + GA4
-**9,054 / 9 KiB**, report subpath **14,231 / 15 KiB**, CLI **15,600 / 20 KiB**.
-Report static assets: **290,083 / 303,104 bytes**. Remaining runtime headroom is small.
+Root CI means **`pnpm run ci`**, not `pnpm ci` (pnpm reserves that command and
+reports it unimplemented). The PR template and release checklist now match the
+already-correct workflow command.
 
-The initial sandbox unit failures were localhost binding restrictions; rerun with
-local binding passed. A sandbox build emitted files but did not exit; the permitted
-local rerun completed. A release-check attempt overlapped the pack gate's rebuild
-and saw an incomplete dist directory; the sequential final gate passed.
+Final Node 22 compressed closure sizes: runtime **6,967 bytes / 7 KiB**, runtime +
+GA4 **9,030 / 9 KiB**, report **14,259 / 15 KiB**, CLI **15,649 / 20 KiB**.
+Report static assets: **290,200 / 303,104 bytes**. Ceilings are unchanged; runtime
+headroom remains small. The initial overlapping pack/release check saw incomplete
+dist files; final pack gates ran sequentially. Later browser failures were traced to a shared-port
+collision with another task, not an established SDK build defect.
+
+Node 18/20 are consumer-only checks, not root build targets (`engines.node >=22`
+at the root). Both supported build/publish majors were exercised. The CLI pack
+gate verifies tarball installs, bundled private contracts, shebang and successful
+JSON output through each package manager. No publish command ran.
+
+### Browser findings and reviewed baselines
+
+- An unrelated local preview occupied IPv4 port 4173 while the Signal spike
+  used IPv6 on that port; Firefox reached the unrelated site. E2E servers now
+  bind explicitly to dedicated `127.0.0.1:44173/44174`, use `--strictPort`, and
+  disable existing-server reuse. All test origins share one source, and the spike
+  uses its existing report-base environment setting. Other tasks were untouched.
+- WebKit's existing scroll-spy failure reproduced on unmodified `8185b846`:
+  less than one pixel of the previous section stayed intersecting, so an
+  intersection-only trigger left the old link active. Scroll/resize now schedule
+  a coalesced animation-frame probe. Existing navigation tests cover all engines.
+- Reduced-motion counters now show final values immediately, including below the
+  viewport. A regression checks no pending counter hooks and the actual **3.7s**
+  wait delta before scrolling. The old Playwright setting was ignored because
+  `reducedMotion` belongs inside `use.contextOptions`; that configuration is fixed.
+- The original checkout had no tracked section snapshots. All seven Darwin
+  Chromium baselines are new. Reference captures from unchanged main were
+  compared section by section. Explained differences are final counter values
+  (e.g. **0 → 3.7s**, form factors **0/0/0 → 50/35/15%**), the corrected active nav,
+  and reading-progress width after the added footer download control. The report
+  layout/content otherwise stayed intact. A capture-only stylesheet hides fixed
+  navigation/progress chrome so it cannot obscure headings in full-section
+  snapshots; separate functional tests exercise navigation. Final images were
+  inspected. No Linux/Windows snapshots were fabricated or copied from Darwin.
+- macOS WebKit 2272 rejects even a trivial `file://` HTML document when Playwright
+  `offline: true` is enabled; it opens normally with JavaScript disabled. WebKit
+  file tests therefore record/block every HTTP(S) request without that broken
+  emulation flag. Chromium/Firefox retain the flag. All engines retain real
+  `file://`, escaping/no-script assertions, zero network requests, storage/cookie
+  checks, and print-layout coverage. This is browser emulation coverage, not a
+  claim of physically disconnecting the Mac's network.
+
+### Fresh framework matrix
+
+Each fixture installs the locally packed candidate (`0.1.0-rc.4` unchanged), runs
+its CLI with sample rate 1/dataLayer/no telemetry, and applies the generated
+snippet. Browser checks serve the production build on localhost, confirm a 200
+response and SDK initialization, generate a lifecycle event, assert one
+`perf_tier_report` with finite LCP, repeat pagehide to verify deduplication, and
+require zero page errors/external requests. These are **Chromium/dataLayer**
+smokes; the existing compile matrix covers the broader snippet combinations.
+
+| Fresh fixture | Verified version | Result |
+|---|---|---|
+| Next App Router | Next 16.3.8, React 19.2.8 | Build + browser pass |
+| React Router | 7.18.4, React 19.2.8 | Build + browser pass |
+| Remix | 2.17.5, React 18.3.1 | Build + browser pass |
+| SvelteKit | 3.0.0, Svelte 5.57.1 | Build + browser pass |
+| Vanilla | Native modules, static HTML | Browser pass; no build step |
+
+Versions above come from installed package manifests; the CLI detection output
+can show the declared range floor (e.g. Remix 2.17.0) instead.
+
+Remix's current scaffold prints a React Router migration notice, so its fresh
+fixture follows the [official v2 manual quickstart](https://v2.remix.run/docs/start/quickstart/).
+The generated React Router scaffold's external fonts were removed for local-only
+verification. Vanilla's generated pinned esm.sh URLs are mapped through an import
+map to the **locally packed candidate**, avoiding a misleading test of published
+rc4. SvelteKit uses the fresh scaffold's auto-adapter production output and local
+preview; no hosted adapter was provisioned. Framework manifests/locks, wizard
+JSON, build logs, screenshots and browser/consumer results remain alongside the
+checkout. Fixture dependency audit findings do not modify Signal's lockfile.
 
 ## Security assessment (not clean)
 
@@ -70,14 +147,37 @@ Library saving failed before upload; local artifacts remain available.
 
 ## Unmet release gates
 
-- Four real BigQuery dry-runs: `bq` is unavailable and no dataset/credentials were configured. Regex/unit checks do not substitute for these.
-- Five fresh framework smokes (Next App Router, React Router v7, Remix v2, SvelteKit, vanilla): not provisioned or installed. Existing spike/browser and packed CLI checks do not satisfy the fresh-project matrix.
-- Node 18 consumer / Node 22 build matrix: not verified; apparent alternate Homebrew node paths resolve to the same Node 25.6.1 binary. No runtimes were installed.
-- Missing WebKit 2272 and reviewed macOS visual baselines prevent a fully green browser matrix. No browser download or baseline refresh was performed.
-- Report-app type debt (17 baseline errors) remains outside the root typecheck command.
-- Security findings above remain open, including the separately scoped private repository and major test-tool migration.
-- npm Trusted Publisher repository/workflow binding after the repository rename needs operator verification. Package metadata/readiness assertions still reference the legacy repository name. No credential/access-policy inspection or changes were made.
-- Approve intended rc5 version/date and close applicable gates before tagging; publication remains separately authorized.
+- Four real BigQuery dry-runs remain blocked. Read-only checks found no `bq` or
+  `gcloud`, `.config/gcloud`, `.bigqueryrc`, application-credential environment,
+  project environment, or exposed BigQuery connector. No authorized project or
+  dataset is known in this task. The parent requested that existing information
+  from the user. No credentials, services, paid query jobs, or new access were
+  created. SQL regex/unit checks do not substitute for real dry-runs.
+- Live GTM Preview / GA4 DebugView and authorized warehouse ingestion/report URL
+  checks require the existing staging destinations. Local spike/collector tests
+  do not prove these external integrations.
+- Report-app type debt (17 baseline errors) remains outside root typecheck.
+- Security findings above remain open, including the separate private graph and
+  major Vitest migration. Do not call the repository security-clean.
+- npm Trusted Publisher repository/workflow binding after the rename still needs
+  operator verification. Package metadata/readiness assertions retain the legacy
+  repository name. Credentials/access policy were not inspected or changed.
+- Linux/Windows browser rendering is unverified locally. The seven new visual
+  baselines are for macOS only; no existing Linux baseline was changed.
+- Library saving remains blocked on the Mac helper (see below); local deliverables
+  are intact. This is a delivery issue, not an SDK runtime failure.
+- Intended rc5 version/date and all applicable release gates require approval
+  before tagging. No release authorization is implied by local passing checks.
+
+### Library delivery blocker
+
+The read-only Library connector succeeds. The supported upload helper initially
+failed before uploads with `hosted apps tools/list request failed: DNS`, then
+`... TLS` under the default Python. Using the existing Homebrew Python resolved
+that transport issue but failed with **`Library prepare_uploads is not available`**.
+No upload was completed; no reconnect/setup UI was offered, and no credentials or
+access changes were attempted. Synthetic HTML and desktop/mobile/print captures
+remain in `../artifacts/`; upload attempts stopped at the parent's direction.
 
 ## Metric references
 

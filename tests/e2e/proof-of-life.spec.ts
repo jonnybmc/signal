@@ -1,16 +1,17 @@
 import type { APIRequestContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
+import { REPORT_ORIGIN, SPIKE_ORIGIN } from './server-origins';
 
 const FRESH_GA_TS = 1_776_072_000_000;
 
 async function readCollectorEvents(request: APIRequestContext) {
-  const response = await request.get('http://localhost:4173/api/events');
+  const response = await request.get(`${SPIKE_ORIGIN}/api/events`);
   return (await response.json()).events;
 }
 
 test('proof-of-life flow flushes one payload into the collector and dataLayer', async ({ page, request }) => {
-  await request.post('http://localhost:4173/api/reset');
-  await page.goto('http://localhost:4173/');
+  await request.post(`${SPIKE_ORIGIN}/api/reset`);
+  await page.goto(`${SPIKE_ORIGIN}/`);
   await page.getByRole('button', { name: 'Flush this page load now' }).click();
 
   const dataLayerMeta = page.locator('#datalayer-meta');
@@ -20,18 +21,19 @@ test('proof-of-life flow flushes one payload into the collector and dataLayer', 
   await expect.poll(async () => (await readCollectorEvents(request)).length).toBe(1);
   await expect(dataLayerMeta).toContainText('event=perf_tier_report', { timeout: 5_000 });
   await expect(dataLayerJson).toContainText('"event": "perf_tier_report"');
-  await expect(previewLink).toHaveAttribute('href', /http:\/\/localhost:4174\/r\?/);
   await expect(previewLink).toHaveAttribute('href', /[?&]rm=none/);
   await expect(previewLink).toHaveAttribute('href', /[?&]rr=insufficient_comparable_data/);
 
   const previewHref = await previewLink.getAttribute('href');
   expect(previewHref).toBeTruthy();
   if (!previewHref) throw new Error('Expected preview href to be present.');
+  expect(new URL(previewHref).origin).toBe(REPORT_ORIGIN);
+  expect(new URL(previewHref).pathname).toBe('/r');
 
   await page.goto(previewHref);
   // RC3 redesign — semantic section IDs replace the slide-deck data-act
   // attributes. Cover hero now carries the origin in an h1.display.
-  await expect(page.locator('#cover h1')).toContainText('localhost:4173');
+  await expect(page.locator('#cover h1')).toContainText(new URL(SPIKE_ORIGIN).host);
   await expect(page.locator('#funnel')).toBeVisible();
   // Closing CTA — "Rapid Fix Plan" copy moved into the closing-modal
   // (hidden until the trigger button is clicked). The visible anchor
@@ -40,8 +42,8 @@ test('proof-of-life flow flushes one payload into the collector and dataLayer', 
 });
 
 test('multi-page spike flow preserves collector truth and preview url semantics', async ({ page, request }) => {
-  await request.post('http://localhost:4173/api/reset');
-  await page.goto('http://localhost:4173/');
+  await request.post(`${SPIKE_ORIGIN}/api/reset`);
+  await page.goto(`${SPIKE_ORIGIN}/`);
   await page.getByRole('button', { name: 'Flush this page load now' }).click();
   // Wait for the first event to actually land on the collector before
   // navigating — otherwise on a slow CI runner the flush can race with
@@ -75,7 +77,7 @@ test('multi-page spike flow preserves collector truth and preview url semantics'
 });
 
 test('builder-generated report urls preserve fallback params end to end', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'fcp-fallback');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -101,7 +103,7 @@ test('builder-generated report urls preserve fallback params end to end', async 
 });
 
 test('builder validates a hosted report url and decodes the same semantics', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'ttfb-fallback');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -123,7 +125,7 @@ test('builder validates a hosted report url and decodes the same semantics', asy
 });
 
 test('strong fixture renders all five sections of the scroll narrative', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'strong-lcp');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -145,10 +147,14 @@ test('strong fixture renders all five sections of the scroll narrative', async (
   // Funnel section names the third-stage label so the redesign keeps the
   // FCP/LCP/INP progression visible.
   await expect(page.locator('#funnel')).toContainText('Interaction becomes ready');
+  // Reduced-motion readers see final values even in sections below the fold;
+  // JavaScript counters must honour the same preference as CSS animations.
+  await expect(page.locator('[data-count-to]')).toHaveCount(0);
+  await expect(page.locator('#distance .race-center-counter .hero-value-num')).toHaveText('3.7');
 });
 
 test('low INP fixture renders the funnel section with FCP and LCP stages', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'low-inp-coverage');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -168,7 +174,7 @@ test('low INP fixture renders the funnel section with FCP and LCP stages', async
 });
 
 test('scroll-spy nav advances as the user scrolls between sections', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'strong-lcp');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -195,7 +201,7 @@ test('scroll-spy nav advances as the user scrolls between sections', async ({ pa
 });
 
 test('affirming fixture keeps the same five-section structure', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'affirming-balance');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -212,7 +218,7 @@ test('affirming fixture keeps the same five-section structure', async ({ page })
 });
 
 test('builder keeps mixed lifecycle fixtures load-shaped by default', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.selectOption('#fixture-select', 'mixed-lifecycle');
   await page.getByRole('button', { name: 'Load selected fixture' }).click();
   await page.getByRole('button', { name: 'Generate report URL' }).click();
@@ -227,7 +233,7 @@ test('builder keeps mixed lifecycle fixtures load-shaped by default', async ({ p
 });
 
 test('builder shows friendly validation errors for malformed aggregate input', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#aggregate-input').fill('{"not":"valid"');
   await page.getByRole('button', { name: 'Generate report URL' }).click();
 
@@ -236,7 +242,7 @@ test('builder shows friendly validation errors for malformed aggregate input', a
 });
 
 test('builder shows friendly validation errors for malformed report urls', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#mode-report-url').click();
   await page.locator('#report-url-input').fill('https://signal.stroma.design/r?rv=99');
   await page.getByRole('button', { name: 'Validate report URL' }).click();
@@ -249,7 +255,7 @@ test('builder rejects out-of-range hosted report urls instead of previewing corr
   const corruptUrl =
     'https://signal.stroma.design/r?mode=preview&d=test.local&nt=50,30,15,5,0&dt=34,33,33&lu=2000&lt=5000&fu=900&ft=2800&tu=200&tt=450&ulc=80&ufc=90&utc=95&clc=75&cfc=85&ctc=90&s=50&p=7&nc=140&nu=0&nr=10&lc=80&ct=constrained&rm=lcp&ga=1776072000000';
 
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#mode-report-url').click();
   await page.locator('#report-url-input').fill(corruptUrl);
   await page.getByRole('button', { name: 'Validate report URL' }).click();
@@ -263,7 +269,7 @@ test('builder rejects contradictory hosted report urls instead of previewing pla
   const contradictoryUrl =
     'https://signal.stroma.design/r?mode=preview&d=test.local&nt=25,25,25,25,0&dt=34,33,33&lu=0&lt=0&fu=0&ft=0&tu=0&tt=0&ulc=0&ufc=0&utc=0&clc=0&cfc=0&ctc=0&s=100&p=7&nc=0&nu=100&nr=0&lc=0&ct=none&rm=none&ga=1776072000000';
 
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#mode-report-url').click();
   await page.locator('#report-url-input').fill(contradictoryUrl);
   await page.getByRole('button', { name: 'Validate report URL' }).click();
@@ -276,7 +282,7 @@ test('builder rejects contradictory hosted report urls instead of previewing pla
 test('report route renders hostile domain text safely', async ({ page }) => {
   const hostileDomain = encodeURIComponent('<img src=x onerror=alert(1)>');
   await page.goto(
-    `http://localhost:4174/r?mode=preview&d=${hostileDomain}&nt=25,25,25,25,0&dt=34,33,33&s=100&p=1&nc=100&nu=0&nr=0&lc=0&ct=none&rm=none`
+    `${REPORT_ORIGIN}/r?mode=preview&d=${hostileDomain}&nt=25,25,25,25,0&dt=34,33,33&s=100&p=1&nc=100&nu=0&nr=0&lc=0&ct=none&rm=none`
   );
 
   // RC3 — hero lives in the cover section h1; XSS attempts must render
@@ -286,7 +292,7 @@ test('report route renders hostile domain text safely', async ({ page }) => {
 });
 
 test('report route shows a friendly error for malformed urls instead of crashing', async ({ page }) => {
-  await page.goto('http://localhost:4174/r?nt=garbage&dt=34,33,33&ct=none&rm=none');
+  await page.goto(`${REPORT_ORIGIN}/r?nt=garbage&dt=34,33,33&ct=none&rm=none`);
 
   await expect(page.locator('.headline')).toContainText('Invalid report URL');
   await expect(page.locator('.error')).toContainText('Invalid encoded integer tuple');
@@ -294,7 +300,7 @@ test('report route shows a friendly error for malformed urls instead of crashing
 
 test('report route fails closed for out-of-range numeric coverage', async ({ page }) => {
   await page.goto(
-    'http://localhost:4174/r?mode=preview&d=test.local&nt=50,30,15,5,0&dt=34,33,33&lu=2000&lt=5000&fu=900&ft=2800&tu=200&tt=450&ulc=80&ufc=90&utc=95&clc=75&cfc=85&ctc=90&s=50&p=7&nc=140&nu=0&nr=10&lc=80&ct=constrained&rm=lcp&ga=1776072000000'
+    `${REPORT_ORIGIN}/r?mode=preview&d=test.local&nt=50,30,15,5,0&dt=34,33,33&lu=2000&lt=5000&fu=900&ft=2800&tu=200&tt=450&ulc=80&ufc=90&utc=95&clc=75&cfc=85&ctc=90&s=50&p=7&nc=140&nu=0&nr=10&lc=80&ct=constrained&rm=lcp&ga=1776072000000`
   );
 
   await expect(page.locator('.headline')).toContainText('Invalid report URL');
@@ -303,7 +309,7 @@ test('report route fails closed for out-of-range numeric coverage', async ({ pag
 
 test('report route fails closed for contradictory but in-range coverage states', async ({ page }) => {
   await page.goto(
-    'http://localhost:4174/r?mode=preview&d=test.local&nt=25,25,25,25,0&dt=34,33,33&lu=0&lt=0&fu=0&ft=0&tu=0&tt=0&ulc=0&ufc=0&utc=0&clc=0&cfc=0&ctc=0&s=100&p=7&nc=0&nu=100&nr=0&lc=0&ct=none&rm=none&ga=1776072000000'
+    `${REPORT_ORIGIN}/r?mode=preview&d=test.local&nt=25,25,25,25,0&dt=34,33,33&lu=0&lt=0&fu=0&ft=0&tu=0&tt=0&ulc=0&ufc=0&utc=0&clc=0&cfc=0&ctc=0&s=100&p=7&nc=0&nu=100&nr=0&lc=0&ct=none&rm=none&ga=1776072000000`
   );
 
   await expect(page.locator('.headline')).toContainText('Invalid report URL');
@@ -312,7 +318,7 @@ test('report route fails closed for contradictory but in-range coverage states',
 
 test('fresh reports surface the generated date in the footer meta strip', async ({ page }) => {
   await page.goto(
-    `http://localhost:4174/r?mode=preview&d=test.local&nt=50,30,15,5,0&dt=34,33,33&lu=0&lt=0&fu=0&ft=0&tu=0&tt=0&ulc=0&ufc=0&utc=0&clc=0&cfc=0&ctc=0&s=50&p=7&nc=100&nu=0&nr=10&lc=61&ct=none&rm=none&rr=insufficient_comparable_data&ga=${FRESH_GA_TS}`
+    `${REPORT_ORIGIN}/r?mode=preview&d=test.local&nt=50,30,15,5,0&dt=34,33,33&lu=0&lt=0&fu=0&ft=0&tu=0&tt=0&ulc=0&ufc=0&utc=0&clc=0&cfc=0&ctc=0&s=50&p=7&nc=100&nu=0&nr=10&lc=61&ct=none&rm=none&rr=insufficient_comparable_data&ga=${FRESH_GA_TS}`
   );
 
   // RC3 — generation date now lives in the .scroll-footer rather than a
@@ -326,7 +332,7 @@ test('builder decodes hostile domain text safely in url-validation mode', async 
   const hostileDomain = encodeURIComponent('<img src=x onerror=alert(1)>');
   const hostileUrl = `https://signal.stroma.design/r?mode=preview&d=${hostileDomain}&nt=25,25,25,25,0&dt=34,33,33&s=100&p=1&nc=100&nu=0&nr=0&lc=0&ct=none&rm=none`;
 
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#mode-report-url').click();
   await page.locator('#report-url-input').fill(hostileUrl);
   await page.getByRole('button', { name: 'Validate report URL' }).click();
@@ -336,7 +342,7 @@ test('builder decodes hostile domain text safely in url-validation mode', async 
 });
 
 test('builder rejects non-report routes in url-validation mode', async ({ page }) => {
-  await page.goto('http://localhost:4174/build/');
+  await page.goto(`${REPORT_ORIGIN}/build/`);
   await page.locator('#mode-report-url').click();
   await page.locator('#report-url-input').fill('javascript:alert(1)');
   await page.getByRole('button', { name: 'Validate report URL' }).click();

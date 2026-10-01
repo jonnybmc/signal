@@ -47,7 +47,7 @@ Before publishing `v0.1.0`:
 - `CHANGELOG.md` moves from `Unreleased` to the actual release date on the release commit
 - the Git tag matches the package version exactly, e.g. `v0.1.0`
 - the GitHub Release uses that same tag
-- the publish workflow runs `pnpm ci`, installs Chromium, runs `pnpm test:e2e:smoke`, runs `pnpm check:release`, and only then publishes
+- the publish workflow runs `pnpm run ci`, installs Chromium, runs `pnpm test:e2e:smoke`, runs `pnpm check:release`, and only then publishes
 
 ## 4. Live Staging Validation
 
