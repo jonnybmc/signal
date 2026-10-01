@@ -14,16 +14,17 @@ import type {
   SignalVitalsThirdParty
 } from '@stroma-labs/signal-contracts';
 
+import { normalizeCapturedUrl, type SignalPathNormalizer } from './normalize-path.js';
+
 // Culprit-kind regex patterns — compiled once at module load.
 const LCP_HERO_URL_PATTERN = /(hero|banner|splash|cover)/i;
 const LCP_PRODUCT_URL_PATTERN = /(product|sku|gallery|pdp)/i;
 const LCP_VIDEO_URL_PATTERN = /(poster|video|thumb(?:nail)?)/i;
 const LCP_BANNER_TARGET_PATTERN = /banner/i;
 
-// Cap on the in-memory `interactionRecords` map. Unbounded growth on
-// long-lived SPA sessions would leak memory into the host page; 100
-// entries with lowest-duration eviction is enough to preserve the p98
-// INP selection while keeping the working set bounded.
+// Retain the slowest 100 interactions. The rank uses the lifecycle's total
+// interaction count, not the retained set. Beyond this exact rank budget
+// (5,000 interactions), report missing rather than a biased percentile.
 const INP_INTERACTION_RECORDS_CAP = 100;
 
 // Inline public-suffix list for eTLD+1 extraction. Keeps the
@@ -63,6 +64,9 @@ const MULTI_PART_PUBLIC_SUFFIXES = new Set<string>([
 ]);
 
 export interface ObserveVitalsOptions {
+  normalizePath?: SignalPathNormalizer;
+  startTime?: number;
+  resetInteractionCount?: boolean;
   generateTarget?: (element: Element | null) => string | null;
   // — opt-in first-party aliasing for exotic infrastructure.
   // Entries are treated as first-party after strict-host + eTLD+1 checks.
@@ -145,15 +149,16 @@ interface ObservedPerformanceStream {
   handle: (entry: PerformanceEntry) => void;
 }
 
-function percentileIndex(length: number, ratio: number): number {
-  return Math.max(0, Math.ceil(length * ratio) - 1);
+function pickInpRecord(records: readonly InpInteractionRecord[], count: number): InpInteractionRecord | null {
+  const rank = Math.floor(count / 50);
+  const sorted = [...records].sort((left, right) => right.duration - left.duration);
+  // A missing candidate can also mean the browser omitted fast interactions.
+  return sorted[rank] ?? null;
 }
 
-function pickInpRecord(records: readonly InpInteractionRecord[]): InpInteractionRecord | null {
-  if (records.length === 0) return null;
-  const sorted = [...records].sort((left, right) => left.duration - right.duration);
-  const index = percentileIndex(sorted.length, 0.98);
-  return sorted[index] ?? sorted[sorted.length - 1] ?? null;
+function readInteractionCount(): number | undefined {
+  const count = (globalThis.performance as (Performance & { interactionCount?: number }) | undefined)?.interactionCount;
+  return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : undefined;
 }
 
 function readLoadState(): SignalLoadState {
@@ -667,6 +672,14 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
   let lcpRawUrl: string | undefined;
   let lcpElementType: SignalLcpElementType | null = null;
   let cumulativeLayoutShift = 0;
+  let clsSupported = false;
+  let sessionValue = 0;
+  let sessionStart = 0;
+  let lastShift = 0;
+  const initiallyHidden = globalThis.document?.visibilityState === 'hidden';
+  const initialInteractionCount = options.resetInteractionCount ? (readInteractionCount() ?? 0) : 0;
+  let minInteractionId = Number.POSITIVE_INFINITY;
+  let maxInteractionId = 0;
   const interactionRecords = new Map<number, InpInteractionRecord>();
   let firstContentfulPaint: number | null = null;
   let rawFcpEntry: RawPaintDebugEntry | null = null;
@@ -684,13 +697,13 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
     lcpRawStartTime = lcpEntry.startTime;
     lcpRawLoadTime = lcpEntry.loadTime;
     lcpRawUrl = lcpEntry.url;
+    const resourceUrl = normalizeCapturedUrl(sanitizeResourceUrl(lcpEntry.url), 'lcp-resource', options.normalizePath);
     rawLcpEntry = {
       entry_type: 'largest-contentful-paint',
       start_time_ms: Math.round(lcpEntry.startTime),
-      url: lcpEntry.url ?? null,
+      url: resourceUrl,
       element_tag: lcpEntry.element?.tagName?.toLowerCase() ?? null
     };
-    const resourceUrl = sanitizeResourceUrl(lcpEntry.url);
     const elementType = inferLcpElementType(lcpEntry.element ?? null, resourceUrl);
     const target = generateTarget(lcpEntry.element ?? null);
     lcpElementType = elementType;
@@ -705,9 +718,17 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
 
   const handleLayoutShiftEntry = (entry: PerformanceEntry): void => {
     const layoutShift = entry as LayoutShiftEntry;
-    if (!layoutShift.hadRecentInput) {
-      cumulativeLayoutShift += layoutShift.value ?? 0;
+    const value = layoutShift.value ?? 0;
+    const time = layoutShift.startTime ?? 0;
+    if (layoutShift.hadRecentInput || !Number.isFinite(value) || value < 0) return;
+    if (sessionValue > 0 && time - lastShift < 1000 && time - sessionStart < 5000) {
+      sessionValue += value;
+    } else {
+      sessionStart = time;
+      sessionValue = value;
     }
+    lastShift = time;
+    cumulativeLayoutShift = Math.max(cumulativeLayoutShift, sessionValue);
   };
 
   const handlePaintEntry = (entry: PerformanceEntry): void => {
@@ -728,6 +749,10 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
     const interactionId = eventEntry.interactionId ?? 0;
     if (duration == null || !Number.isFinite(duration) || interactionId <= 0) return;
 
+    // Chromium IDs advance by seven; this bounded fallback counts gaps and
+    // groups repeated event entries without retaining every interaction ID.
+    minInteractionId = Math.min(minInteractionId, interactionId);
+    maxInteractionId = Math.max(maxInteractionId, interactionId);
     const current = interactionRecords.get(interactionId);
     if (current) {
       if (duration <= current.duration) return;
@@ -775,16 +800,21 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
   const createObserver = (
     type: string,
     callback: (entry: PerformanceEntry) => void,
-    options?: PerformanceObserverInit
+    observerOptions?: PerformanceObserverInit
   ): void => {
     if (typeof PerformanceObserver === 'undefined') return;
     if (!(PerformanceObserver as typeof PerformanceObserver).supportedEntryTypes?.includes(type)) return;
 
+    const handle = (entry: PerformanceEntry): void => {
+      if (options.startTime != null && entry.startTime < options.startTime) return;
+      callback(entry);
+    };
     const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) callback(entry);
+      for (const entry of list.getEntries()) handle(entry);
     });
-    observer.observe(options ?? { type, buffered: true });
-    observers.push({ observer, handle: callback });
+    observer.observe(observerOptions ?? { type, buffered: true });
+    observers.push({ observer, handle });
+    if (type === 'layout-shift') clsSupported = true;
   };
 
   createObserver('largest-contentful-paint', handleLcpEntry, { type: 'largest-contentful-paint', buffered: true });
@@ -796,7 +826,7 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
   createObserver('event', handleEventTimingEntry, {
     type: 'event',
     buffered: true,
-    durationThreshold: 40
+    durationThreshold: 16
   } as PerformanceObserverInit);
 
   createObserver('long-animation-frame', handleLoafEntry, {
@@ -820,7 +850,14 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
         : 0;
       const ttfb =
         navigation && navigation.responseStart > 0 ? Math.round(navigation.responseStart - navigationStart) : null;
-      const inpRecord = pickInpRecord([...interactionRecords.values()]);
+      const count = readInteractionCount();
+      const interactionCount =
+        count != null
+          ? Math.max(0, count - initialInteractionCount)
+          : maxInteractionId > 0
+            ? Math.floor((maxInteractionId - minInteractionId) / 7) + 1
+            : 0;
+      const inpRecord = pickInpRecord([...interactionRecords.values()], interactionCount);
       const resourceEntries =
         (globalThis.performance?.getEntriesByType?.('resource') as PerformanceResourceTiming[] | undefined) ?? [];
       const lcpBreakdown =
@@ -844,7 +881,10 @@ export function observeVitals(options: ObserveVitalsOptions = {}): VitalObserver
 
       return {
         lcp_ms: largestContentfulPaint,
-        cls: cumulativeLayoutShift > 0 ? Number(cumulativeLayoutShift.toFixed(3)) : null,
+        cls:
+          clsSupported && !initiallyHidden && (firstContentfulPaint != null || options.resetInteractionCount)
+            ? Number(cumulativeLayoutShift.toFixed(3))
+            : null,
         inp_ms: inpRecord ? Math.round(inpRecord.duration) : null,
         fcp_ms: firstContentfulPaint,
         ttfb_ms: ttfb,

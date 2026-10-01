@@ -30,7 +30,7 @@ GA4 is comprehensive on conversions, sessions, and attribution. It's deliberatel
 |---|---|---|
 | Which network were users actually on? | `effective_type` — a browser hint that bins both fibre and a congested 4G tower as `4g` | TCP-handshake-based network tier (urban / moderate / constrained moderate / constrained) — measured per session, not guessed |
 | Why was the page slow? | LCP / INP scores | LCP element + render-delay phase, INP interaction-phase breakdown, third-party scripts that loaded before paint |
-| Per-session detail? | Free tier samples after 10M events / month | Every event, joined to your existing warehouse, no sampling |
+| Per-session detail? | Sampling depends on the report query; export has separate limits | Events go to your configured sink; optional SDK sampleRate controls collection |
 | Long Animation Frame attribution? | Not captured | Chromium 123+ worst-frame duration + dominant cause (script / layout / style / paint) |
 | Navigation Timing decomposition? | Not captured | Per-subpart DNS / TCP / TLS / request / response / SW timings, three TTFB definitions (raw, connection, activation-adjusted), Early-Hints provenance |
 | Where does the raw data live? | Google's warehouse, GA4 schema | Your warehouse, your schema — joinable to spend, conversions, anything else you already have |
@@ -103,7 +103,7 @@ One event per page load with:
 - **Long Animation Frame** attribution on Chromium 123+
 - **Background-tab filter** so percentiles aren't poisoned by hidden-tab loads
 
-No PII. No cookies set by us. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
+No cookies are set by the core SDK. It captures page/referrer paths and selected resource context; those paths can contain personal or business identifiers. Query strings and fragments are stripped, but that does not guarantee the remaining path is anonymous. Use the opt-in `normalizePath` hook or sanitise your sink output. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
 
 ## From SDK to shareable report URL
 

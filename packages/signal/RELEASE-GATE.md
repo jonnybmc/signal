@@ -118,10 +118,9 @@ regressions no automated test will hit.
 
 ## After publish
 
-- Run the live dry-run AGAIN against the freshly-published `@latest` to
+- Run the live dry-run AGAIN against the freshly-published explicit version and its intended dist-tag (`@next` for prereleases, `@latest` for stable) to
   confirm the published artifact behaves identically to the pre-publish
-  `pnpm pack` artifact. (Pre-1.0 the rc IS the `@latest` tag — see the
-  publish workflow's `Resolve npm dist-tag` step.)
+  `pnpm pack` artifact. The workflow validates the SDK version, release tag, and release prerelease flag before selecting the dist-tag.
 - If anything diverges, immediately deprecate the just-published version
   via `npm deprecate @stroma-labs/signal@<version> "Withdrawn — see <issue>"`.
 

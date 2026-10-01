@@ -86,7 +86,7 @@ One event per page load with everything we measured:
 - **Long Animation Frame** story on Chromium 123+ — worst frame and dominant cause (script, layout, style, paint)
 - **Background-tab filter** — events captured while the tab was hidden are tagged so they don't poison your percentiles
 
-Zero runtime dependencies. No PII collected. No cookies set. The runtime is opinionated about what *not* to capture — see [why-signal.md](https://github.com/jonnybmc/stroma-signal/blob/main/docs/why-signal.md) for the deliberate exclusions.
+Zero runtime dependencies. The core SDK sets no cookies. It captures page/referrer paths and selected resource context, which may contain identifiers even after query strings and fragments are stripped. Optional `sampleRate` controls collection. The runtime is opinionated about what *not* to capture — see [why-signal.md](https://github.com/jonnybmc/stroma-signal/blob/main/docs/why-signal.md) for the deliberate exclusions.
 
 ## Going beyond the SDK
 
@@ -122,3 +122,32 @@ That confirms the tarball you installed was built by [this repository's publish 
 ## License
 
 MIT — see [LICENSE](https://github.com/jonnybmc/stroma-signal/blob/main/LICENSE).
+
+
+### Optional route templates
+
+```ts
+init({
+  sinks: [yourSink],
+  normalizePath: (pathname, field) => pathname.replace(/\/orders\/[^/]+/, '/orders/:id')
+});
+```
+
+`normalizePath(pathname, field)` receives `page`, `referrer`, or `lcp-resource`.
+Return an absolute pathname (starting with `/`) or `null` to omit it. Query,
+fragment, whitespace, backslash, and protocol-relative outputs are rejected.
+Errors fail closed: the required page field becomes `/`; optional URL fields
+become `null`. Referrer/resource origins are preserved. It does not redact
+hostnames, operator-supplied `generateTarget` labels, custom sink enrichment,
+or optional identity/ad fields. Review those separately.
+
+Path and visibility context are captured at the start of observation (after
+prerender activation, and afresh on bfcache restore). Soft navigation does not
+start a new measurement lifecycle. CLS reports the largest session window;
+observable zero is distinct from unsupported data. INP retains at most 100
+slowest interactions, selects by the total interaction count, and reports
+`null` when the required rank is outside retained/observable candidates
+(including 5,000+ interactions). The fallback count uses Chromium interaction
+ID spacing; native `performance.interactionCount` is preferred. Signal still
+flushes once on first hide/manual flush per lifecycle, not continuously for
+an entire long-lived page visit.

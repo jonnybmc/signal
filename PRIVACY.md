@@ -216,3 +216,34 @@ Historical versions are accessible via the file's git history.
 Questions, concerns, or requests: **admin@stroma.design**
 
 Security disclosures: see [`SECURITY.md`](./SECURITY.md).
+
+
+## Offline evidence brief
+
+The builder and hosted report offer a dedicated HTML download generated in the
+browser. Original aggregate JSON is preferred; compact report URLs can round
+or omit detail. The downloaded file contains a fresh allowlisted projection of
+aggregate measurements. Domain and top-page route labels are omitted by default;
+an explicit checkbox includes them. Unknown warning text is withheld to avoid
+copying identifiers, with a visible notice to review the original source.
+Aggregate values themselves may still be sensitive.
+
+The file includes inline CSS and system fonts, with no JavaScript, remote assets,
+forms, network requests, browser-storage writes, authentication, or database.
+It remains readable with JavaScript disabled and can be printed to PDF. This
+applies to the exported file: opening the hosted `/r?...` URL still transmits
+its query data to the host and Cloudflare access logs. Hosted optional intent
+telemetry is tied to form submission, not passive report viewing; its code and
+storage behavior are not included in the offline brief.
+
+Anyone holding a downloaded copy can read and forward it. It is a fixed snapshot,
+not a revocable link or access-controlled document. There is no refresh service.
+The brief states the aggregate generation time and source window length; the
+contract does not supply exact window start/end timestamps.
+
+Core collection captures entry page/referrer paths and selected LCP resource
+paths. Query/fragment removal does not remove identifiers in path segments. The
+optional `normalizePath` hook can replace paths with operator route templates;
+it does not anonymise hosts, custom target labels, or customer-added identity
+fields. Raw events remain with the customer's configured sinks; hosted report
+query logging is a separate data flow.

@@ -12,6 +12,7 @@ import { classifyDevice } from './classify-device.js';
 import { classifyNetwork, DEFAULT_NETWORK_THRESHOLDS, getNavigationEntry } from './classify-network.js';
 import { readSignalContext } from './context.js';
 import { createEventId } from './create-event-id.js';
+import { normalizeCapturedUrl, type SignalPathNormalizer } from './normalize-path.js';
 import { deriveNavigationTiming, observeVitals } from './observe-vitals.js';
 import { type SignalLifecycleState, transitionSignalLifecycle } from './state-machine.js';
 
@@ -34,6 +35,7 @@ export interface SignalInitConfig {
   sampleRate?: number;
   networkTierThresholds?: SignalNetworkTierThresholds;
   deviceTierOverride?: (cores: number, memory: number | null, screenWidth: number) => SignalDeviceTier;
+  normalizePath?: SignalPathNormalizer;
   generateTarget?: (element: Element | null) => string | null;
   // Opt-in first-party aliasing for customers with exotic infrastructure
   // whose CDN origins can't be captured by strict-host + eTLD+1 matching.
@@ -159,11 +161,26 @@ function createRuntime(config: SignalInitConfig): RuntimeInternals {
   );
   let navigationType: SignalNavigationType = startedPrerendered ? 'prerender' : 'navigate';
   let vitalObserver: ReturnType<typeof observeVitals> | null = null;
+  let entryContext = readSignalContext();
+  let entryPath = '/';
+  let entryRef: string | null = null;
 
   const startVitalObserver = (): void => {
     vitalObserver?.disconnect();
+    entryContext = readSignalContext();
+    entryPath = normalizeCapturedUrl(readPageUrl(), 'page', config.normalizePath) ?? '/';
+    entryRef = normalizeCapturedUrl(readReferrer(), 'referrer', config.normalizePath);
     vitalObserver = observeVitals({
+      startTime:
+        navigationType === 'restore'
+          ? globalThis.performance?.now?.()
+          : navigationType === 'prerender'
+            ? (getNavigationEntry() as (PerformanceNavigationTiming & { activationStart?: number }) | null)
+                ?.activationStart
+            : undefined,
+      resetInteractionCount: navigationType === 'restore',
       generateTarget: config.generateTarget,
+      normalizePath: config.normalizePath,
       firstPartyOriginsAllowlist: config.firstPartyOriginsAllowlist
     });
   };
@@ -200,8 +217,8 @@ function createRuntime(config: SignalInitConfig): RuntimeInternals {
       event_id: eventId,
       ts: clock(),
       host: globalThis.location?.host ?? 'unknown.local',
-      url: readPageUrl(),
-      ref: readReferrer(),
+      url: entryPath,
+      ref: entryRef,
       net_tier: network.net_tier,
       net_tcp_ms: network.net_tcp_ms,
       net_tcp_source: network.net_tcp_source,
@@ -211,7 +228,7 @@ function createRuntime(config: SignalInitConfig): RuntimeInternals {
       device_screen_w: device.device_screen_w,
       device_screen_h: device.device_screen_h,
       vitals,
-      context: readSignalContext(),
+      context: entryContext,
       meta: {
         pkg_version: config.packageVersion ?? '0.1.0',
         browser: detectBrowser(),

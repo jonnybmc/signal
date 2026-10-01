@@ -3,6 +3,7 @@ import { decodeSignalReportUrl, type SignalAggregateV1 } from '@stroma-labs/sign
 import './shared.css';
 import './report-tokens-v2.css';
 import './report-scroll.css';
+import { downloadOfflineBrief } from './offline-brief';
 import { bootReport } from './render-helpers';
 import { renderReportShell, SECTION_ORDER } from './render-shell';
 import { escapeHtml } from './render-utils';
@@ -54,6 +55,24 @@ if (!location.search) {
     const viewModel = buildReportViewModel(aggregate);
     app.className = '';
     app.innerHTML = renderReportShell(viewModel);
+    const exportPanel = document.createElement('section');
+    exportPanel.className = 'panel';
+    exportPanel.innerHTML = `<h2>Take the evidence with you</h2><p>Download a self-contained offline snapshot. URL data may be rounded or omit details; use original aggregate JSON in the builder for higher fidelity. Anyone holding the file can read and forward it.</p><label><input type="checkbox"> Include site and route labels</label> <button type="button">Download evidence brief</button><p role="status"></p>`;
+    const source = aggregate;
+    exportPanel.querySelector('button')?.addEventListener('click', () => {
+      try {
+        downloadOfflineBrief(source, {
+          source: 'report_url',
+          includeSiteLabels: exportPanel.querySelector('input')?.checked === true
+        });
+        const status = exportPanel.querySelector('[role="status"]');
+        if (status) status.textContent = 'Evidence brief downloaded.';
+      } catch {
+        const status = exportPanel.querySelector('[role="status"]');
+        if (status) status.textContent = 'Could not create the evidence brief. Try original JSON in the builder.';
+      }
+    });
+    app.append(exportPanel);
     bootReport(SECTION_ORDER.map((s) => s.id));
   }
 }
