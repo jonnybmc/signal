@@ -1,8 +1,9 @@
 # Signal
 
-> 🧪 **Release Candidate** — currently published as `0.1.0-rc.4`. While we are pre-1.0 the rc sits on the `latest` dist-tag, so `npm install @stroma-labs/signal` (no version specifier) resolves to it directly.
+> 🧪 **Release Candidate** — package version `0.1.0-rc.4`; this source README also describes unreleased rc5 preparation.
+> The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4.
 > The `0.x` line is pre-stable; the API can change before `1.0`.
-> See [CHANGELOG.md](https://github.com/jonnybmc/stroma-signal/blob/main/CHANGELOG.md) for what shipped and what closes the next version.
+> See [CHANGELOG.md](https://github.com/jonnybmc/signal/blob/main/CHANGELOG.md) for what shipped and what closes the next version.
 
 A small library that measures what your real users actually experience — their network speed, device capability, and how fast your pages feel — and delivers that data to your own analytics so you can answer questions like *"are mobile users in dense areas getting a fair experience?"* without guesswork.
 
@@ -27,7 +28,7 @@ Four entry points — pick what you need:
 | `@stroma-labs/signal/report`         | A preview helper for local QA without a warehouse.       |
 | `@stroma-labs/signal/summary`        | Plain-text, JSON, and CSV exports for ad-hoc analysis.   |
 
-The base runtime is around 6 KB gzipped (it carries the per-subpart Navigation Timing breakdown). The helpers are optional and add roughly 0.5 KB and 1 KB respectively.
+The validated source build is 6,967 bytes gzipped for the runtime closure and 9,030 bytes for runtime + GA4. Other entry points are optional; sizes depend on the imported closure and build. See the [validation record](https://github.com/jonnybmc/signal/blob/main/docs/rc5-validation.md) for budgets.
 
 ## Three ways to wire it up
 
@@ -86,7 +87,7 @@ One event per page load with everything we measured:
 - **Long Animation Frame** story on Chromium 123+ — worst frame and dominant cause (script, layout, style, paint)
 - **Background-tab filter** — events captured while the tab was hidden are tagged so they don't poison your percentiles
 
-Zero runtime dependencies. The core SDK sets no cookies. It captures page/referrer paths and selected resource context, which may contain identifiers even after query strings and fragments are stripped. Optional `sampleRate` controls collection. The runtime is opinionated about what *not* to capture — see [why-signal.md](https://github.com/jonnybmc/stroma-signal/blob/main/docs/why-signal.md) for the deliberate exclusions.
+Zero runtime dependencies. The core SDK sets no cookies. It captures page/referrer paths and selected resource context, which may contain identifiers even after query strings and fragments are stripped. Optional `sampleRate` controls collection. The runtime is opinionated about what *not* to capture — see [why-signal.md](https://github.com/jonnybmc/signal/blob/main/docs/why-signal.md) for the deliberate exclusions.
 
 ## Going beyond the SDK
 
@@ -94,19 +95,21 @@ The SDK is just the collection layer. The full story:
 
 1. **Install Signal** — events flow on the next page load
 2. **Land them somewhere** — GA4 + BigQuery, your own warehouse, or a callback that hands them to your existing pipeline
-3. **Run a URL-builder query** — Signal ships [BigQuery SQL templates](https://github.com/jonnybmc/stroma-signal/blob/main/docs/ga4-bigquery-url-builder.sql) that turn warehouse rows into a hosted report URL
+3. **Run a URL-builder query** — Signal ships [BigQuery SQL templates](https://github.com/jonnybmc/signal/blob/main/docs/ga4-bigquery-url-builder.sql) that turn warehouse rows into a hosted report URL
 4. **Share the URL** — recipients see your real-user performance gap at `signal.stroma.design/r/...`, no login required
 
 The hosted report stops at proof. It shows who's affected, how big the gap is, and where performance becomes poor — not why or how to fix it. That keeps the artifact honest and the file size small.
 
+The report app also exports a [self-contained offline evidence brief](https://github.com/jonnybmc/signal/blob/main/docs/offline-evidence-brief.md). This is an app feature, not a fifth SDK entry point. Hosted URLs expose their query data to hosting logs; offline files omit labels by default but remain readable and forwardable by anyone holding a copy.
+
 ## Docs
 
-- **[Why Signal exists](https://github.com/jonnybmc/stroma-signal/blob/main/docs/why-signal.md)** — what gap it fills and what it deliberately doesn't do
-- **[Marketer quickstart](https://github.com/jonnybmc/stroma-signal/blob/main/docs/marketer-quickstart.md)** — non-technical walkthrough, GTM-first
-- **[Setup guide for engineers](https://github.com/jonnybmc/stroma-signal/blob/main/docs/client-integrations.md)** — the three paths above with more detail
-- **[Production report automation](https://github.com/jonnybmc/stroma-signal/blob/main/docs/production-report-automation.md)** — keeping the hosted URL fresh from BigQuery
-- **[Public API reference](https://github.com/jonnybmc/stroma-signal/blob/main/docs/public-api-v0.1.md)** — every export and field
-- **[Technical reference](https://github.com/jonnybmc/stroma-signal/blob/main/docs/signal-technical-reference.md)** — schemas, thresholds, browser support matrix
+- **[Why Signal exists](https://github.com/jonnybmc/signal/blob/main/docs/why-signal.md)** — what gap it fills and what it deliberately doesn't do
+- **[Marketer quickstart](https://github.com/jonnybmc/signal/blob/main/docs/marketer-quickstart.md)** — non-technical walkthrough, GTM-first
+- **[Setup guide for engineers](https://github.com/jonnybmc/signal/blob/main/docs/client-integrations.md)** — the three paths above with more detail
+- **[Production report automation](https://github.com/jonnybmc/signal/blob/main/docs/production-report-automation.md)** — keeping the hosted URL fresh from BigQuery
+- **[Public API reference](https://github.com/jonnybmc/signal/blob/main/docs/public-api-v0.1.md)** — every export and field
+- **[Technical reference](https://github.com/jonnybmc/signal/blob/main/docs/signal-technical-reference.md)** — schemas, thresholds, browser support matrix
 
 ## Verification
 
@@ -117,14 +120,16 @@ npm audit signatures
 # → "1 package has a verified attestation"
 ```
 
-That confirms the tarball you installed was built by [this repository's publish workflow](https://github.com/jonnybmc/stroma-signal/actions/workflows/publish.yml) on the exact commit referenced in the release notes.
+That confirms the tarball you installed was built by [this repository's publish workflow](https://github.com/jonnybmc/signal/actions/workflows/publish.yml) on the exact commit referenced in the release notes.
 
 ## License
 
-MIT — see [LICENSE](https://github.com/jonnybmc/stroma-signal/blob/main/LICENSE).
+MIT — see [LICENSE](https://github.com/jonnybmc/signal/blob/main/LICENSE).
 
 
-### Optional route templates
+## Optional route templates (unreleased)
+
+The following additive API and measurement fixes are in source and are not included in the published rc4 tarball.
 
 ```ts
 init({

@@ -5,16 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-While the SDK is pre-1.0 every release — including `-rc.N` pre-releases — publishes to the npm `latest` dist-tag, so `npm install @stroma-labs/signal` (no version specifier) resolves to the current rc. The `next`-vs-`latest` split returns once `1.0.0` ships.
+The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4. Historical release entries describe the policy at that release; the Unreleased policy supersedes rc4 for future publication.
 
 ```
-pnpm add @stroma-labs/signal                 # current pre-1.0 rc (latest)
+pnpm add @stroma-labs/signal                 # follows the existing latest tag
 pnpm add @stroma-labs/signal@0.1.0-rc.4      # exact rc.4 pin
 ```
 
 Bump the exact pin example whenever a new `-rc.N` is cut so onboarders default to the freshest pinned snapshot.
 
 ## [Unreleased]
+
+### Fixed — lifecycle attribution and Web Vitals
+
+- Snapshot page/referrer paths and initial visibility when observation starts, after prerender activation, and again on bfcache restore. Soft navigation no longer rewrites entry attribution.
+- Use the maximum CLS session window with strict one-second gap/five-second window boundaries. Distinguish observable foreground zero from missing/unsupported data.
+- Group INP entries by interaction ID, retain the slowest 100 interactions, and select the outlier rank using total lifecycle interaction count. Return null when the rank is unavailable, including 5,000+ interactions; exclude pre-activation/pre-restore buffered entries.
+
+### Added — offline evidence brief and optional path normalization
+
+- Export dedicated HTML from the builder or hosted report using validated, allowlisted aggregate fields. Site/route labels are explicit opt-in; unknown warning text is withheld with a notice. Includes metric coverage, source fidelity, print styling and an engineering handoff. No scripts, network requests, remote assets, telemetry, forms, storage, authentication or database in the file. See [usage and limits](./docs/offline-evidence-brief.md).
+- Add `normalizePath(pathname, field)` for page, referrer and LCP resource paths, with fail-closed invalid output. Hostnames, custom target labels and operator enrichment remain outside its scope.
+
+### Fixed — report interactions
+
+- Invalidate stale builder links, previews and copy feedback after edits; catch URL-size failures while allowing valid aggregate JSON to export offline.
+- Update scroll-spy on scroll/resize and render final counter values immediately under reduced motion.
+
+### Changed — tooling and publication policy
+
+- Apply narrow public dependency cleanup: plugin-terser 1.0.0, Vite 6.4.3, Vitest 3.2.7 and bounded PostCSS/nanoid overrides. Retain TypeScript 5.9.3 and unchanged private lockfile importer definitions. This reduces audit findings but does not resolve all advisories; PR70's major migration stays separate.
+- Resolve future prereleases to npm `next`, stable versions to `latest`, and validate release metadata. No version bump, release date or registry-tag change is included.
+- Isolate browser test ports, add seven reviewed macOS Chromium visual baselines, and document the tested Node/package-manager/framework matrix and remaining release gates in [rc5-validation.md](./docs/rc5-validation.md).
 
 ### Changed — URL-builder emits actionable diagnostics instead of half-baked URLs
 
@@ -54,6 +76,8 @@ Three new regex tests in `packages/signal-contracts/test/sql-templates.test.ts` 
 - `gtm-recipe.md` clarifies that the warehouse-only fields are excluded to avoid exceeding GA4's 25-param cap, not to "preserve headroom" — the GA4 subset is exactly at the cap.
 - `operator-expectations.md` cost examples re-based to the canonical 7-day production window (was incorrectly stated as 30 days; the SQL, technical reference, and automation doc all say 7 complete days).
 - `operator-expectations.md` browser-support matrix aligned with `signal-technical-reference.md` — LCP / CLS / INP are Chromium-only; FCP and TTFB are universal. The previous claim that all CWV are supported on Safari 16+ / Firefox was wrong.
+
+The browser-brand assumptions in the earlier doc sweep above are superseded by the current feature-detected presence rules; even broadly supported vitals can be null.
 
 ## [0.1.0-rc.4] - 2026-05-08
 

@@ -22,6 +22,12 @@ The Tier Report is a complete, standalone artifact: a team should be able to
 take it into a quarterly business review or sprint review and act on it
 without further engagement.
 
+## Offline evidence brief
+
+`src/offline-brief.ts` validates `SignalAggregateV1`, builds a fresh allowlisted projection, and renders a dedicated HTML document. `/build` and `/r` expose **Download evidence brief** with an unchecked **Include site and route labels** option. Original aggregate JSON preserves more detail than the compact URL. Input edits clear stale URL/copy/preview state; URL-size failures do not prevent valid JSON exports.
+
+The downloaded file has inline CSS, system fonts, print styles, coverage caveats and an engineering handoff. It has no `bootReport`, script, telemetry, form, external asset, storage, authentication or database. It is readable with JavaScript disabled. These guarantees concern the downloaded file; the hosted shell below still loads fonts, runs scripts and supports optional intent submission. See [the operator guide](../../docs/offline-evidence-brief.md).
+
 ## Architecture (RC3 redesign)
 
 - **Layout**: vertical scroll narrative — five stacked sections with a
@@ -80,4 +86,4 @@ five-section structure, mood-driven editorial template selection, mode
 transitions (`reduced` / `legacy`), forbidden-words discipline, glossary
 KPI translation, and the closing-section demand-sampling modal. E2E
 coverage lives in `tests/e2e/proof-of-life.spec.ts` and
-`tests/e2e/report-visual.spec.ts`.
+`tests/e2e/report-visual.spec.ts` and `tests/e2e/offline-brief.spec.ts`. Root typecheck does not include this app; [the validation record](../../docs/rc5-validation.md) records the remaining direct app type errors and browser coverage.

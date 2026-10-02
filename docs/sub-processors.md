@@ -16,7 +16,7 @@ Operators relying on this page for procurement should verify each entry against 
 |---|---|
 | Role | Edge CDN, static hosting (Cloudflare Pages), serverless compute (Cloudflare Workers), DNS for `*.stroma.design` |
 | Surfaces | `signal.stroma.design/r/` (hosted Tier Report), `api.stroma.design/api/v1/intent` (demand-signal endpoint), `api.stroma.design/api/v1/install` (install-telemetry endpoint) |
-| Data processed | URL contents (encoded report payload), POST bodies of intent + install endpoints, request IP (for routing and rate-limiting only — not logged by Stroma), user-agent string (captured server-side on intent endpoint per the [Privacy Policy](../PRIVACY.md#what-stroma-receives-and-when)) |
+| Data processed | URL contents (encoded report payload), POST bodies of intent + install endpoints, request IP (visible to receiving infrastructure; edge logging/retention is an operational setting, not a client-SDK guarantee), user-agent string (captured server-side on intent endpoint per the [Privacy Policy](../PRIVACY.md#what-stroma-receives-and-when)) |
 | Location | Cloudflare's global edge network. Specific point-of-presence depends on the requesting client's geography. |
 | Public DPA | <https://www.cloudflare.com/cloudflare-customer-dpa/> |
 | Sub-processor list | <https://www.cloudflare.com/gdpr/subprocessors/> |

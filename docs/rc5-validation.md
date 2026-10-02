@@ -1,12 +1,22 @@
 # RC5 preparation: validation and remaining gates
 
-This is local preparation, not release approval. Base: `8185b8460297f953df727af93e8f5c5c7f6c204d`.
+This records PR72 preparation and local validation, not release approval. Base: `8185b8460297f953df727af93e8f5c5c7f6c204d`.
 Branch: `codex/rc5-evidence-preparation`. SDK version remains `0.1.0-rc.4`.
-No release date, tag, push, merge, publication, or schedule was created.
+The initial local validation created no remote changes. The branch was subsequently pushed as [PR72](https://github.com/jonnybmc/signal/pull/72); the user then authorized documentation reconciliation and normal merge with the scoped BigQuery waiver below. No release date, version bump, tag, npm publication or schedule is authorized by that merge approval.
 The first implementation is preserved as commit `a1aa9ab3c4562f24de80c4f2870114e1bf5a5d71`.
 The follow-up adds scroll-spy/reduced-motion fixes, isolated browser test servers and
 reviewed Darwin baselines, correct CI-command documentation, and this expanded
 validation evidence. It does not change SDK/runtime dependencies or the private graph.
+
+## PR72 merge decision
+
+The user accepted the missing BigQuery validations for PR72 merge only. The four real BigQuery dry-runs remain **not executed**, not passed. Future publication still requires release-gate assessment; live GTM/GA4/warehouse checks, Trusted Publisher verification, security findings, app type debt and unverified platforms are not blanket-waived.
+
+The implementation head `7796f8b09b9d3acc03915b0948ab8aac2f70607c` passed GitHub's Linux `verify` and `e2e-smoke` jobs ([run 36969688672](https://github.com/jonnybmc/signal/actions/runs/36969688672)); Cloudflare Pages also deployed its PR preview successfully. Normal merge requires the same checks on the final documentation head. The PR records final-head and post-merge outcomes; this record does not pre-claim them. A main merge may deploy the hosted report through the connected Pages integration, but does not run the npm publication workflow.
+
+### Documentation reconciliation validation
+
+The follow-up documentation pass updates README/changelog, setup/framework/API references, offline usage, privacy/data-flow claims and release gates. The existing docs checks now recognize the two exported normalizer types and the Svelte 5 `$effect` recipe. `pnpm run ci` on Node 22.23.3 passed again: 3,700 tests across 55 files, lint/root types/build/export/boundary/budget and release metadata/pack gates. Relative documentation file links and `git diff --check` passed. Bundle sizes are unchanged. An initial sandbox run could not bind localhost test ports; the permitted rerun exercised those tests normally. No new dependencies or test environments were added for this documentation pass.
 
 ## Implemented and reviewed
 
@@ -147,11 +157,10 @@ Library saving failed before upload; local artifacts remain available.
 
 ## Unmet release gates
 
-- Four real BigQuery dry-runs remain blocked. Read-only checks found no `bq` or
+- Four real BigQuery dry-runs remain unrun; their absence is accepted for PR72 merge only. Read-only checks found no `bq` or
   `gcloud`, `.config/gcloud`, `.bigqueryrc`, application-credential environment,
   project environment, or exposed BigQuery connector. No authorized project or
-  dataset is known in this task. The parent requested that existing information
-  from the user. No credentials, services, paid query jobs, or new access were
+  dataset is known in this task. The user accepted merging without those validations; this is not evidence of SQL execution. No credentials, services, paid query jobs, or new access were
   created. SQL regex/unit checks do not substitute for real dry-runs.
 - Live GTM Preview / GA4 DebugView and authorized warehouse ingestion/report URL
   checks require the existing staging destinations. Local spike/collector tests
@@ -162,7 +171,7 @@ Library saving failed before upload; local artifacts remain available.
 - npm Trusted Publisher repository/workflow binding after the rename still needs
   operator verification. Package metadata/readiness assertions retain the legacy
   repository name. Credentials/access policy were not inspected or changed.
-- Linux/Windows browser rendering is unverified locally. The seven new visual
+- Linux functional CI passed on the implementation head. Linux/Windows visual rendering remains unverified locally. The seven new visual
   baselines are for macOS only; no existing Linux baseline was changed.
 - Library saving remains blocked on the Mac helper (see below); local deliverables
   are intact. This is a delivery issue, not an SDK runtime failure.

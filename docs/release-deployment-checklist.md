@@ -2,6 +2,12 @@
 
 Use this as the final release and launch gate for `@stroma-labs/signal` v0.1. It combines the npm-package checks, first-publish preflight, and live pipeline validation in one place.
 
+## Merge and publication are separate
+
+PR72's missing BigQuery validations were accepted **for that merge only**; they remain unrun, not passed. See the [scoped waiver](../packages/signal/RELEASE-GATE.md#pr72-merge-waiver--bigquery-only) and [validation evidence](./rc5-validation.md). Other release gates and existing debt were not blanket-waived.
+
+A merge to `main` runs CI and may update the hosted report through the connected Cloudflare Pages integration. The npm workflow runs only on a published GitHub Release or manual dispatch with an explicit tag. It sends prereleases to `next` and stable versions to `latest`, validating version/tag/prerelease metadata. Merging does not create a release or move existing npm tags.
+
 ## 1. One-Time Publish Preflight
 
 Before the first public publish:
@@ -23,7 +29,10 @@ pnpm test:unit
 pnpm build
 pnpm check:release
 pnpm test:e2e:smoke
+pnpm test:cli:pack
 ```
+
+Root `pnpm typecheck` checks contracts/SDK, not the report app. The current direct app check retains baseline errors; see the validation record. Run the full browser matrix for browser changes and the four real SQL dry-runs in the package release gate before publication.
 
 Package audit:
 
@@ -79,6 +88,8 @@ For the generated hosted report URL:
 - legacy links show the legacy freshness warning instead of a fake date
 - malformed or contradictory URLs fail closed in both `/build` and `/r`
 
+For an offline download, also check local file readability with JavaScript disabled, zero network/storage behavior, omitted default labels, escaping, coverage/fidelity caveats and print layout. See [offline usage](./offline-evidence-brief.md).
+
 ## 6. Visual and QA Review
 
 Run the local Chromium visual suite when UI changes are intentional:
@@ -93,7 +104,7 @@ If the diffs are intentional:
 pnpm test:e2e:visual:update
 ```
 
-Keep the checked-in Darwin and Linux Chromium snapshots aligned with the committed UI.
+The current source includes seven reviewed Darwin Chromium baselines. Linux/Windows visual coverage is not established by those files or by Linux functional smoke CI; create and review platform-specific baselines in their target environment rather than copying Darwin images.
 
 ## 7. Operational Controls
 

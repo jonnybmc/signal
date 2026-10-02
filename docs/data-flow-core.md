@@ -32,7 +32,7 @@ flowchart LR
     Recipient[Anyone with the report URL<br/>opens it in a browser]
 
     %% --- Performance-event path (operator-owned, Stroma not involved) ---
-    Browser -- "SignalEventV1 payload<br/>(no PII, no IP, no cookies)" --> OpSink
+    Browser -- "SignalEventV1 payload<br/>(paths may identify; no client IP field)" --> OpSink
     OpSink --> OpWarehouse
 
     %% --- Hosted /r report (URL-encoded payload) ---

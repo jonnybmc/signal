@@ -198,6 +198,12 @@ The threshold is exactly the application's documented `SIGNAL_PREVIEW_MINIMUM_SA
 
 **You do not need to change anything** when you see State 2 or State 3 — the SQL is working correctly. The diagnostic is your signal that production traffic hasn't reached the threshold yet. Re-run the query after more events accumulate.
 
+## Optional offline handoff
+
+The current report-app source adds **Download evidence brief** in `/build/` and on a valid `/r` report. Prefer original aggregate JSON; a URL-derived file cannot recover omitted or rounded fields. Site/route labels are omitted unless explicitly selected. The HTML works without JavaScript or network access and includes print styling, coverage caveats and selectable engineering handoff text.
+
+Follow the [offline brief guide](./offline-evidence-brief.md), including the local-builder path for sensitive data. Hosted report queries reach Cloudflare logs when opened; a later download cannot undo that. A file is a fixed, forwardable snapshot with no refresh or revocation. Scheduled warehouse refreshes do not update previously downloaded copies. This option does not replace event, SQL or live integration validation.
+
 ## 8. If SQL Is Blocked
 
 Use [https://signal.stroma.design/build](https://signal.stroma.design/build) or the local `/build` route to:
