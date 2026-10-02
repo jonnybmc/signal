@@ -207,6 +207,12 @@ Recommended controls for the current-state table:
 - no public exposure unless the report is intentionally being shared outside your trusted workspace
 - explicit retention for stale rows if you keep history beyond the single current artifact
 
+## Optional offline handoff
+
+The current report-app source adds **Download evidence brief** in `/build/` and on a valid `/r` report. Prefer original aggregate JSON; a URL-derived file cannot recover omitted or rounded fields. Site/route labels are omitted unless explicitly selected. The HTML works without JavaScript or network access and includes print styling, coverage caveats and selectable engineering handoff text.
+
+Follow the [offline brief guide](./offline-evidence-brief.md), including the local-builder path for sensitive data. Hosted report queries reach Cloudflare logs when opened; a later download cannot undo that. A file is a fixed, forwardable snapshot with no refresh or revocation. Scheduled warehouse refreshes do not update previously downloaded copies. This option does not replace event, SQL or live integration validation.
+
 ## Alternatives And Escape Hatches
 
 Lighter alternative for early-stage or low-volume teams:

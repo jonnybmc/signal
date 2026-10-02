@@ -2,7 +2,7 @@
 
 This document is the canonical public package contract for `@stroma-labs/signal` v0.1.
 
-If another doc, plan, or old PRD example disagrees with this file, this file wins for the shipped npm package.
+This describes the current source contract. Additions explicitly marked **unreleased** are not present in the published rc4 tarball; consult the changelog for the installed version.
 
 ## Package Shape
 
@@ -74,6 +74,7 @@ init({
   networkTierThresholds,
   deviceTierOverride,
   generateTarget,
+  normalizePath, // unreleased addition
   debug,
   packageVersion
 });
@@ -93,6 +94,17 @@ init({
 - `random?: () => number` — effect-injection point for deterministic sampling in tests
 - `eventIdFactory?: () => string` — effect-injection point for deterministic event IDs in tests
 - `logger?: SignalRuntimeLogger` — route runtime warnings into your own observability without monkeypatching `console`
+
+### Optional path normalization (unreleased)
+
+`normalizePath?: SignalPathNormalizer` is additive. The main entry exports both `SignalPathNormalizer` and `SignalPathField` types:
+
+```ts
+type SignalPathField = 'page' | 'referrer' | 'lcp-resource';
+type SignalPathNormalizer = (pathname: string, field: SignalPathField) => string | null;
+```
+
+Return an absolute pathname or `null`. Query strings, fragments, whitespace, backslashes and protocol-relative output are rejected. Throws/invalid output fail closed: required page path becomes `/`, optional URLs become `null`. Referrer/resource origins are preserved. The default behavior is unchanged. Hostnames, `generateTarget` labels, optional ad-context fields and customer sink enrichment are not normalized. See [the integration example](./client-integrations.md#optional-path-normalization-unreleased).
 
 ## Public sinks
 

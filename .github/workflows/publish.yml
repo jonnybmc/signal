@@ -93,25 +93,13 @@ jobs:
       - run: pnpm check:release
         env:
           RELEASE_PUBLISHED_AT: ${{ github.event.release.published_at }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
       - name: Resolve npm dist-tag from release type
         id: npm_tag
-        # Pre-1.0 dist-tag policy: every release — prerelease or not —
-        # publishes to the `latest` dist-tag. While we are pre-1.0 the
-        # rc IS the install-by-default surface, and the npmjs.com
-        # package page sorts versions by which dist-tag points at them.
-        # Without this override the most recent rc would sit hidden
-        # behind the previous one on npm and `npm install
-        # @stroma-labs/signal` (no version specifier) would resolve to
-        # an older rc.
-        #
-        # REVERT WHEN: a stable 1.0.0 ships. At that point restore the
-        # split: prereleases → `next`, stable → `latest`. The previous
-        # release-event / workflow_dispatch resolution logic lives in
-        # git history at chore/qa-brand-logo HEAD~1 if you need to
-        # re-introduce it verbatim.
-        run: |
-          echo "tag=latest" >> "$GITHUB_OUTPUT"
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event_name == 'release' && toJSON(github.event.release.prerelease) || '' }}
+        run: node scripts/resolve-npm-tag.mjs
       # Use `npm publish` directly (not `pnpm publish`). pnpm's publish
       # wrapper requests an OIDC token for sigstore (provenance signing)
       # but does NOT request the OIDC token for npm publish auth — its

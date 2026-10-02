@@ -16,8 +16,8 @@ Each page load produces a single JSON event with the following structure.
 | `event_id` | `string` | Per-page-load identifier for deduplication and warehouse joins. Not a user identifier. |
 | `ts` | `number` | Unix timestamp (milliseconds) when the event was finalized. |
 | `host` | `string` | Origin hostname. |
-| `url` | `string` | Page path. |
-| `ref` | `string \| null` | Referrer origin + path (query and hash stripped for privacy). |
+| `url` | `string` | Page path. Unreleased fixes snapshot it at observation start, activation or restore. |
+| `ref` | `string \| null` | Referrer origin + path (query/hash stripped; remaining path may still identify). |
 
 ### Network classification
 
@@ -39,15 +39,22 @@ Each page load produces a single JSON event with the following structure.
 
 ### Vitals
 
-| Field | Type | Browser support | Description |
-|---|---|---|---|
-| `lcp_ms` | `number \| null` | Chromium-only | Largest Contentful Paint in ms. |
-| `cls` | `number \| null` | Chromium-only | Cumulative Layout Shift (session window). |
-| `inp_ms` | `number \| null` | Chromium-only | Interaction to Next Paint in ms. |
-| `fcp_ms` | `number \| null` | Universal | First Contentful Paint in ms. |
-| `ttfb_ms` | `number \| null` | Universal | Time to First Byte in ms. |
+| Field | Type | Required observation |
+|---|---|---|
+| `lcp_ms` | `number \| null` | Eligible `largest-contentful-paint` entry. |
+| `cls` | `number \| null` | Supported `layout-shift` observation and observable lifecycle. |
+| `inp_ms` | `number \| null` | `event` entries with interaction IDs and a candidate at the required rank. |
+| `fcp_ms` | `number \| null` | `first-contentful-paint` entry before flush. |
+| `ttfb_ms` | `number \| null` | Valid navigation timing under the lifecycle policy. |
 
-**Important:** LCP, CLS, and INP are not available in Safari or Firefox. These fields will be null for a meaningful share of mobile traffic, particularly in markets with significant iPhone usage. FCP and TTFB are universally available and always populated. Signal never fabricates a metric that was not measured.
+All vitals are nullable. Feature availability, early flushing, background starts and non-load lifecycle policy affect presence; browser brand alone does not establish coverage. Signal does not fabricate missing metrics. The [validation matrix](./rc5-validation.md) records tested environments, not a guarantee that every performance API exists in them.
+
+#### Measurement semantics (unreleased fixes)
+
+- Page/referrer paths and visibility are captured at observation start, after prerender activation and again on bfcache restore. A later soft navigation does not replace entry attribution or begin a new lifecycle.
+- CLS is the maximum session-window sum. Consecutive eligible shifts must be less than 1,000 ms apart and less than 5,000 ms from the window's first shift. A supported foreground observation with FCP, or a visible restored lifecycle, can report zero; unsupported, background or pre-paint observations remain null.
+- INP groups entries by interaction ID using each group's maximum duration. It retains the slowest 100 groups and selects descending zero-based rank `floor(totalInteractionCount / 50)`. Native interaction counts use a lifecycle baseline; the fallback estimates counts from Chromium interaction-ID spacing of seven. If the required candidate is absent, including ranks at 5,000+ interactions, INP is null. Event Timing's requested 16 ms duration threshold, unavailable entries and iframe limitations still constrain observation.
+- Buffered entries before activation/restore are excluded. The first hide/pagehide or manual flush emits at most once; this is not continuous whole-visit reporting after an earlier flush.
 
 ### Optional attribution
 
@@ -60,7 +67,7 @@ These fields enrich the core vitals with diagnostic context when the browser sup
 | `lcp_attribution.load_state` | `'loading' \| 'interactive' \| 'complete'` | Page load state when LCP occurred. |
 | `lcp_attribution.target` | `string \| null` | Human-readable LCP element description. |
 | `lcp_attribution.element_type` | `'image' \| 'text' \| null` | LCP element category. |
-| `lcp_attribution.resource_url` | `string \| null` | Normalized resource URL (sanitized, no signed CDN URLs or sensitive query strings). |
+| `lcp_attribution.resource_url` | `string \| null` | Origin + pathname, with query/fragment stripped. Paths and hosts can still identify resources; the unreleased `normalizePath` hook can template or omit the path. |
 | `lcp_attribution.culprit_kind` | `'hero_image' \| 'headline_text' \| 'banner_image' \| 'product_image' \| 'video_poster' \| 'unknown' \| null` | Classifier label for the LCP element's editorial role. Null when classification falls through or `element_type` is null. |
 
 **INP attribution:**
@@ -171,7 +178,7 @@ These signals are collected for cross-reference but do not feed tier classificat
 | `context.rtt_ms` | `number \| null` | Chromium-only | Estimated round-trip time. Smoothed. Often diverges from TCP connect time. |
 | `context.save_data` | `boolean \| null` | Chromium-only | Whether the user has requested reduced data usage. |
 | `context.connection_type` | `string \| null` | Chromium Android only | Physical connection type: wifi, cellular, ethernet. Very limited availability. |
-| `context.visibility_hidden_at_load` | `boolean \| undefined` | Universal | `true` when `document.visibilityState === 'hidden'` at event creation (backgrounded tab, prerendered navigation). Default report aggregation pre-filters rows where this is `true` so background loads do not poison percentiles. |
+| `context.visibility_hidden_at_load` | `boolean \| undefined` | Universal | `true` when observation starts hidden. In the unreleased fixes, this is snapshotted at lifecycle start, after prerender activation, and afresh on bfcache restore; finalization visibility does not overwrite it. Default report aggregation pre-filters rows where this is `true` so background loads do not poison percentiles. |
 
 ### Metadata
 
@@ -293,7 +300,7 @@ The aggregation layer produces a `SignalAggregateV1` containing:
 - **Network distribution:** percentage breakdown across urban, moderate, constrained_moderate, constrained, and unknown (unclassified).
 - **Device distribution:** percentage breakdown across low, mid, and high.
 - **Comparison tier:** the highest-proportion non-urban tier, automatically selected as the comparison baseline.
-- **Per-tier metric summaries:** p75 values for LCP, FCP, and TTFB for both urban and comparison tiers, with per-metric observation counts and coverage percentages. INP uses the 98th percentile (p98) of per-interaction durations, consistent with the CrUX/web-vitals methodology for responsiveness.
+- **Per-tier metric summaries:** p75 values for LCP, FCP, and TTFB for both urban and comparison tiers, with per-metric observation counts and coverage percentages. The SDK produces one bounded INP estimate per lifecycle using the interaction outlier rule described above; it is not a percentile computed over the retained subset. Aggregate interaction coverage and poor shares use available per-lifecycle observations.
 - **Measured experience funnel:** an additive `experience_funnel` block for the hosted Tier Report. It carries active stages, measured session coverage, poor-session share, stage thresholds, and per-tier stage summaries for FCP, LCP, and INP when coverage is defensible.
 - **Actionable signal blocks** (iteration 6, additive): `device_hardware`, `network_signals`, and `environment` — see below.
 
@@ -381,7 +388,9 @@ For the full aggregation specification including comparison tier selection logic
 
 ## Report URL
 
-The report URL encodes the full aggregate into URL parameters and points to the hosted report shell at `https://signal.stroma.design/r`. The report page is a static HTML file served from Cloudflare Pages. It parses URL parameters, computes the visualization, and renders entirely client-side. **Rendering and decoding the report makes no API calls, performs no server-side processing, and writes no logs of the report payload.** The closing-section CTAs in the report's needs-inquiry router are an explicit opt-in interaction that posts demand-signal events to `/api/v1/intent`; that path runs only when the recipient clicks a CTA pill, never as part of rendering, and carries no report payload — see [tier-report-design-spec.md](./tier-report-design-spec.md) for the captured fields.
+The report URL encodes a compact, potentially rounded subset of the aggregate and points to `https://signal.stroma.design/r`. Cloudflare serves the static bundle and its access logs receive the URL query, including encoded report content. Decoding/rendering happens client-side, but the hosted shell loads assets and scripts. Optional closing-modal form submission sends intent telemetry; passive viewing does not submit that form. See [privacy](../PRIVACY.md) for this separate data flow.
+
+The [offline evidence brief](./offline-evidence-brief.md) uses a dedicated allowlisted renderer with no script, network, storage or hosted-page behavior in the resulting file. Prefer original aggregate JSON over URL-decoded data. Downloading after opening a hosted URL cannot undo its query exposure.
 
 Two generation paths:
 
@@ -402,12 +411,12 @@ The Tier Report is not a diagnostic, attribution, or commercial modelling artifa
 
 | Module | Import path | Contents | Approximate size |
 |---|---|---|---|
-| **Base** | `@stroma-labs/signal` | Tier classification, vitals capture (incl. per-subpart Navigation Timing breakdown), beacon and callback sinks | ~6 KB gzipped |
+| **Base** | `@stroma-labs/signal` | Tier classification, vitals capture (incl. per-subpart Navigation Timing breakdown), beacon and callback sinks | ~6.8 KiB gzipped (validated source closure) |
 | **GA4 helper** | `@stroma-labs/signal/ga4` | dataLayer sink, GA4 event formatting | ~0.5 KB |
 | **Report builder** | `@stroma-labs/signal/report` | In-memory aggregation, `getReportUrl()`, URL encoding | ~1 KB |
 | **Summary helpers** | `@stroma-labs/signal/summary` | `formatSignalSummary`, JSON / CSV exports for events and aggregates | ~0.8 KB |
 
-Tree-shaking ensures unused modules are excluded from production builds. A minimal installation importing only the base package stays around 6 KB gzipped.
+Tree-shaking ensures unused modules are excluded from production builds. A minimal installation importing only the base package measured 6,967 bytes gzipped in the validated source build. Runtime + GA4 measured 9,030 bytes; see [the full budget results](./rc5-validation.md). Individual helper sizes above are historical estimates, not additive closure measurements.
 
 ---
 

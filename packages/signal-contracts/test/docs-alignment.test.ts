@@ -233,6 +233,8 @@ const PUBLIC_EXPORTS: Record<string, ReadonlySet<string>> = {
     'SignalSink',
     'SignalWarehouseRowV1',
     'SignalInitConfig',
+    'SignalPathField',
+    'SignalPathNormalizer',
     'SignalRuntimeController',
     'SignalRuntimeLogger',
     'BeaconSinkOptions',

@@ -8,6 +8,7 @@ import {
 
 import './shared.css';
 import { renderAggregateSummary } from './builder-summary';
+import { downloadOfflineBrief } from './offline-brief';
 import { renderIssueList, renderLinkedMessage } from './render-utils';
 
 type BuilderMode = 'aggregate' | 'report_url';
@@ -79,7 +80,7 @@ app.innerHTML = `
     </p>
     <h1 class="headline">Zero-code report builder</h1>
     <p class="lede">
-      Use this launch companion to either turn a warehouse aggregate into a shareable report URL or validate a generated report URL before sharing it.
+      Download a private offline evidence brief from your aggregate JSON, or generate and validate a hosted report URL. Original JSON preserves more detail than the compact URL.
     </p>
   </section>
 
@@ -115,6 +116,11 @@ app.innerHTML = `
         <button class="secondary" id="copy-url" type="button" disabled>Copy URL</button>
       </div>
 
+      <div class="builder-field">
+        <label><input id="include-site-labels" type="checkbox"> Include site and route labels in the downloaded file</label>
+        <p class="subtle">Labels are omitted by default. Anyone holding the file can read and forward it; copies cannot be revoked. Hosted report URLs send their query data to the hosting infrastructure when opened.</p>
+        <button class="primary" id="download-brief" type="button">Download evidence brief</button>
+      </div>
       <div class="status-stack">
         <div id="builder-error" class="error"></div>
         <p id="builder-success" class="success"></p>
@@ -131,20 +137,26 @@ app.innerHTML = `
   </section>
 `;
 
-const input = document.querySelector<HTMLTextAreaElement>('#aggregate-input');
-const reportUrlInput = document.querySelector<HTMLTextAreaElement>('#report-url-input');
-const error = document.querySelector<HTMLElement>('#builder-error');
-const success = document.querySelector<HTMLElement>('#builder-success');
-const summary = document.querySelector<HTMLElement>('#builder-summary');
-const fixtureSelect = document.querySelector<HTMLSelectElement>('#fixture-select');
-const fixtureDescription = document.querySelector<HTMLElement>('#fixture-description');
-const copyButton = document.querySelector<HTMLButtonElement>('#copy-url');
-const aggregateField = document.querySelector<HTMLElement>('#aggregate-field');
-const reportUrlField = document.querySelector<HTMLElement>('#report-url-field');
-const formatButton = document.querySelector<HTMLButtonElement>('#format-json');
-const loadFixtureButton = document.querySelector<HTMLButtonElement>('#load-fixture');
-const generateButton = document.querySelector<HTMLButtonElement>('#generate-url');
-const validateButton = document.querySelector<HTMLButtonElement>('#validate-url');
+function requiredElement<T extends Element>(selector: string): T {
+  const element = document.querySelector<T>(selector);
+  if (!element) throw new Error(`Missing builder control: ${selector}`);
+  return element;
+}
+
+const input = requiredElement<HTMLTextAreaElement>('#aggregate-input');
+const reportUrlInput = requiredElement<HTMLTextAreaElement>('#report-url-input');
+const error = requiredElement<HTMLElement>('#builder-error');
+const success = requiredElement<HTMLElement>('#builder-success');
+const summary = requiredElement<HTMLElement>('#builder-summary');
+const fixtureSelect = requiredElement<HTMLSelectElement>('#fixture-select');
+const fixtureDescription = requiredElement<HTMLElement>('#fixture-description');
+const copyButton = requiredElement<HTMLButtonElement>('#copy-url');
+const aggregateField = requiredElement<HTMLElement>('#aggregate-field');
+const reportUrlField = requiredElement<HTMLElement>('#report-url-field');
+const formatButton = requiredElement<HTMLButtonElement>('#format-json');
+const loadFixtureButton = requiredElement<HTMLButtonElement>('#load-fixture');
+const generateButton = requiredElement<HTMLButtonElement>('#generate-url');
+const validateButton = requiredElement<HTMLButtonElement>('#validate-url');
 const modeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.builder-mode'));
 
 if (
@@ -176,6 +188,18 @@ for (const fixture of signalReportScenarioFixtures) {
   fixtureSelect.append(option);
 }
 
+function invalidateOutput(): void {
+  latestUrl = '';
+  copyButton.disabled = true;
+  success.textContent = '';
+  renderErrors(error, []);
+  summary.innerHTML =
+    '<p class="summary-empty">Input changed. Generate or validate again to preview the decoded summary.</p>';
+}
+
+input.addEventListener('input', invalidateOutput);
+reportUrlInput.addEventListener('input', invalidateOutput);
+
 function setMode(nextMode: BuilderMode): void {
   _mode = nextMode;
   const aggregateActive = nextMode === 'aggregate';
@@ -200,6 +224,7 @@ function setMode(nextMode: BuilderMode): void {
 
 function loadFixture(id: string): void {
   const fixture = signalReportScenarioFixtures.find((entry) => entry.id === id) ?? signalReportScenarioFixtures[0];
+  if (!fixture) throw new Error('No report fixtures available');
   input.value = JSON.stringify(fixture.aggregate, null, 2);
   reportUrlInput.value = encodeSignalReportUrl(fixture.aggregate, `${location.origin}/r`).url;
   fixtureSelect.value = fixture.id;
@@ -229,6 +254,7 @@ loadFixtureButton.addEventListener('click', () => {
 });
 
 formatButton.addEventListener('click', () => {
+  invalidateOutput();
   const { aggregate, issues } = parseAggregateInput(input.value);
   if (!aggregate) {
     renderErrors(error, issues);
@@ -242,6 +268,7 @@ formatButton.addEventListener('click', () => {
 });
 
 generateButton.addEventListener('click', () => {
+  invalidateOutput();
   const { aggregate, issues } = parseAggregateInput(input.value);
   if (!aggregate) {
     latestUrl = '';
@@ -253,13 +280,21 @@ generateButton.addEventListener('click', () => {
   }
 
   renderErrors(error, []);
-  const encoded = encodeSignalReportUrl(aggregate, `${location.origin}/r`);
-  const decoded = decodeSignalReportUrl(encoded.url);
-  latestUrl = encoded.url;
-  reportUrlInput.value = encoded.url;
-  copyButton.disabled = false;
-  renderLinkedMessage(success, 'Generated URL', encoded.url);
-  summary.innerHTML = renderAggregateSummary(decoded);
+  try {
+    const encoded = encodeSignalReportUrl(aggregate, `${location.origin}/r`);
+    const decoded = decodeSignalReportUrl(encoded.url);
+    latestUrl = encoded.url;
+    reportUrlInput.value = encoded.url;
+    copyButton.disabled = false;
+    renderLinkedMessage(success, 'Generated URL', encoded.url);
+    summary.innerHTML = renderAggregateSummary(decoded);
+  } catch (cause) {
+    invalidateOutput();
+    renderErrors(error, [
+      cause instanceof Error ? cause.message : 'Could not encode this report.',
+      'You can still download an evidence brief from valid aggregate JSON.'
+    ]);
+  }
 });
 
 validateButton.addEventListener('click', () => {
@@ -282,10 +317,31 @@ validateButton.addEventListener('click', () => {
 
 copyButton.addEventListener('click', async () => {
   if (!latestUrl) return;
+  const copiedUrl = latestUrl;
   try {
-    await navigator.clipboard.writeText(latestUrl);
-    renderLinkedMessage(success, 'Copied URL', latestUrl);
+    await navigator.clipboard.writeText(copiedUrl);
+    if (latestUrl === copiedUrl) renderLinkedMessage(success, 'Copied URL', copiedUrl);
   } catch {
+    if (latestUrl !== copiedUrl) return;
     renderErrors(error, ['Could not copy the URL automatically. Select it from the link and copy it manually.']);
+  }
+});
+
+document.querySelector('#download-brief')?.addEventListener('click', () => {
+  const parsed = _mode === 'aggregate' ? parseAggregateInput(input.value) : parseReportUrlInput(reportUrlInput.value);
+  if (!parsed.aggregate) {
+    invalidateOutput();
+    renderErrors(error, parsed.issues);
+    return;
+  }
+  try {
+    downloadOfflineBrief(parsed.aggregate, {
+      source: _mode,
+      includeSiteLabels: document.querySelector<HTMLInputElement>('#include-site-labels')?.checked === true
+    });
+    renderErrors(error, []);
+    success.textContent = 'Evidence brief downloaded. Open the file locally or print it to PDF.';
+  } catch {
+    renderErrors(error, ['Could not create the evidence brief. Check the aggregate and try again.']);
   }
 });

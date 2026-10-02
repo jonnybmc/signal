@@ -597,3 +597,87 @@ describe('SignalInitConfig effect injection', () => {
     expect(eventA?.event_id).toBe(eventB?.event_id);
   });
 });
+
+describe('lifecycle entry attribution', () => {
+  it('keeps foreground load and initial path when a soft navigation later hides the page', () => {
+    const { documentTarget, windowTarget } = setupGlobals();
+    const sink = createSink();
+    const controller = init({ sinks: [sink] });
+    location.pathname = '/later';
+    documentTarget.visibilityState = 'hidden';
+    documentTarget.dispatch('visibilitychange', new Event('visibilitychange'));
+    windowTarget.dispatch('pagehide', { persisted: false } as PageTransitionEvent);
+    controller.flushNow();
+    expect(sink.handle).toHaveBeenCalledTimes(1);
+    expect(sink.handle.mock.calls[0]?.[0]).toMatchObject({
+      url: '/pricing',
+      context: { visibility_hidden_at_load: false }
+    });
+  });
+
+  it('preserves hidden-at-entry even after becoming visible', () => {
+    const { documentTarget } = setupGlobals();
+    documentTarget.visibilityState = 'hidden';
+    const sink = createSink();
+    const controller = init({ sinks: [sink] });
+    documentTarget.visibilityState = 'visible';
+    controller.flushNow();
+    expect(sink.handle.mock.calls[0]?.[0].context.visibility_hidden_at_load).toBe(true);
+  });
+
+  it('snapshots at prerender activation and again at bfcache restoration', () => {
+    const { documentTarget, windowTarget } = setupGlobals({ prerendering: true });
+    documentTarget.visibilityState = 'hidden';
+    const sink = createSink();
+    const controller = init({ sinks: [sink] });
+    location.pathname = '/activated';
+    documentTarget.visibilityState = 'visible';
+    documentTarget.prerendering = false;
+    documentTarget.dispatch('prerenderingchange', new Event('prerenderingchange'));
+    controller.flushNow();
+    location.pathname = '/restored';
+    windowTarget.dispatch('pageshow', { persisted: true } as PageTransitionEvent);
+    location.pathname = '/later';
+    documentTarget.visibilityState = 'hidden';
+    controller.flushNow();
+    expect(sink.handle.mock.calls[0]?.[0]).toMatchObject({
+      url: '/activated',
+      context: { visibility_hidden_at_load: false },
+      meta: { navigation_type: 'prerender' }
+    });
+    expect(sink.handle.mock.calls[1]?.[0]).toMatchObject({
+      url: '/restored',
+      context: { visibility_hidden_at_load: false },
+      meta: { navigation_type: 'restore' }
+    });
+  });
+});
+
+describe('opt-in path normalization', () => {
+  it('templates captured paths at entry and preserves referrer origin without query data', () => {
+    const { documentTarget } = setupGlobals();
+    location.pathname = '/orders/123';
+    documentTarget.referrer = 'https://other.test/customers/456?email=secret#private';
+    const sink = createSink();
+    const controller = init({ sinks: [sink], normalizePath: (path) => path.replace(/\d+/g, ':id') });
+    location.pathname = '/later';
+    controller.flushNow();
+    expect(sink.handle.mock.calls[0]?.[0]).toMatchObject({
+      url: '/orders/:id',
+      ref: 'https://other.test/customers/:id'
+    });
+  });
+
+  it('fails closed if the normalizer throws or returns a URL/query', () => {
+    setupGlobals();
+    const sink = createSink();
+    init({
+      sinks: [sink],
+      normalizePath: (_path, field) => {
+        if (field === 'page') throw new Error('private');
+        return '/bad?secret';
+      }
+    }).flushNow();
+    expect(sink.handle.mock.calls[0]?.[0]).toMatchObject({ url: '/', ref: null });
+  });
+});

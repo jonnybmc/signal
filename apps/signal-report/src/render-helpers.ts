@@ -77,7 +77,7 @@ export function bootCounterTweens(root: ParentNode = document): void {
   const els = Array.from(root.querySelectorAll<HTMLElement>('[data-count-to]'));
   if (!els.length) return;
 
-  if (typeof IntersectionObserver === 'undefined') {
+  if (typeof IntersectionObserver === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     for (const el of els) {
       el.textContent = el.dataset.countTo ?? '';
       delete el.dataset.countTo;
@@ -303,23 +303,26 @@ export function bootScrollSpy(sectionIds: string[]): void {
     if (bestId) setActive(bestId);
   };
 
+  let pending = false;
+  const scheduleProbe = (): void => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      probe();
+    });
+  };
+
   if (typeof IntersectionObserver !== 'undefined') {
-    // Observer is the trigger; probe() is the picker. Observer fires
-    // when any section's intersection state changes (not on every
-    // scroll event), so probe() runs O(intersection-events) instead of
-    // O(scroll-frames) — no per-scroll forced reflow. probe() picks
-    // the section closest to a focusY anchor (more reliable than
-    // ratio-based picking when sections are >> viewport height).
-    const obs = new IntersectionObserver(() => probe(), { threshold: 0, rootMargin: '0px' });
+    const obs = new IntersectionObserver(scheduleProbe, { threshold: 0, rootMargin: '0px' });
     for (const el of els) obs.observe(el);
-    probe();
-    return;
   }
 
-  // Fallback only — pre-IntersectionObserver browsers (effectively zero
-  // in 2026). probe() on every scroll forces synchronous layout.
-  window.addEventListener('scroll', probe, { passive: true });
-  window.addEventListener('resize', probe);
+  // Two sections can remain intersecting while the closest heading changes
+  // (including a fractional pixel of the previous section in WebKit). Observe
+  // scrolling too, coalescing layout reads to at most one per animation frame.
+  window.addEventListener('scroll', scheduleProbe, { passive: true });
+  window.addEventListener('resize', scheduleProbe);
   probe();
 }
 

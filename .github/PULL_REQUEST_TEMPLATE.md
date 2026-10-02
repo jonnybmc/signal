@@ -12,7 +12,7 @@ Steps to verify the change works correctly.
 
 ## Checklist
 
-- [ ] `pnpm ci` passes
+- [ ] `pnpm run ci` passes
 - [ ] Bundle budgets not exceeded
 - [ ] Import boundaries respected
 - [ ] Tests added/updated if needed

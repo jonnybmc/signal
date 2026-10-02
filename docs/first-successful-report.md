@@ -118,6 +118,12 @@ Paste the URL into a browser. You should land on the hosted five-section narrati
 
 If the URL renders as "Invalid report URL", the aggregate failed guard validation. Open the same URL at `/build` instead (change `/r?` to `/build?`) — the builder surfaces the specific guard issue.
 
+## Optional offline handoff
+
+The current report-app source adds **Download evidence brief** in `/build/` and on a valid `/r` report. Prefer original aggregate JSON; a URL-derived file cannot recover omitted or rounded fields. Site/route labels are omitted unless explicitly selected. The HTML works without JavaScript or network access and includes print styling, coverage caveats and selectable engineering handoff text.
+
+Follow the [offline brief guide](./offline-evidence-brief.md), including the local-builder path for sensitive data. Hosted report queries reach Cloudflare logs when opened; a later download cannot undo that. A file is a fixed, forwardable snapshot with no refresh or revocation. Scheduled warehouse refreshes do not update previously downloaded copies. This option does not replace event, SQL or live integration validation.
+
 ## 7. Optional — schedule the refresh
 
 The saved URL-builder query does not refresh on its own. To keep a single always-current `signal_report_url`, convert it to a BigQuery scheduled query using [bigquery-saved-query-setup.md](./bigquery-saved-query-setup.md) and the canonical operating model in [production-report-automation.md](./production-report-automation.md).

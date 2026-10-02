@@ -8,13 +8,13 @@ Signal reads browser APIs (`navigator`, `document`, `performance`). It must not 
 
 | Framework | Client-only mechanism |
 |---|---|
-| Next.js (App Router) | `'use client'` directive |
+| Next.js (App Router) | `'use client'` directive on the component; initialize inside `useEffect` (the generated recipe dynamically imports there) |
 | Next.js (Pages Router) | `typeof window !== 'undefined'` check |
 | React Router v7 (framework mode) | `entry.client.tsx` (browser-only entry) |
 | Remix v2 (legacy) | `entry.client.tsx` (browser-only entry) |
 | Nuxt 3 | `.client.ts` plugin suffix |
 | Angular Universal | `isPlatformBrowser(platformId)` |
-| SvelteKit | `import { browser } from '$app/environment'` |
+| SvelteKit (Svelte 5) | Initialize in client-only `$effect`, as in the generated recipe |
 | Plain Vite / static | No guard needed — always in the browser |
 
 Worked examples for each framework are in [framework-recipes.md](./framework-recipes.md).
@@ -34,6 +34,10 @@ This means:
 This is intentional. Soft navigation support is not first-class in v0.1. The performance data collected (Web Vitals, network tier, device tier) reflects the initial page load, which is the most meaningful measurement for tier classification.
 
 A `markRoute()` API for opt-in per-route INP / CLS / LCP capture in SPAs is being considered for v0.2. The shape, tradeoffs, and open questions are tracked in [RFC 0001](./rfcs/0001-soft-navigation-markroute.md) — comments and pushback welcome before it gets implemented.
+
+In the unreleased measurement fixes, entry path/referrer and visibility are captured when observation starts, not when it flushes. Initialize early; the SDK cannot recover a route changed before `init()`. Prerender activation and bfcache restore take fresh context snapshots. The first hide or manual flush ends that lifecycle's measurement; later activity in the same lifecycle is not continuously reported.
+
+The [validation record](./rc5-validation.md#fresh-framework-matrix) lists exact tested framework versions. Fresh framework smokes used Chromium and the dataLayer sink; this is not a claim that every framework/sink/browser combination was exercised.
 
 ## Duplicate init is safe
 

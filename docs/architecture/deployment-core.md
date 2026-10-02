@@ -46,7 +46,7 @@ flowchart TB
 
     VisitorBrowser -->|"HTTPS<br>visitor to operator"| OperatorWeb
     VisitorBrowser -.->|"SDK reads and writes capture_id"| VisitorSessionStorage
-    OperatorWeb -.->|"SignalEventV1 beacon<br>no PII, no IP, no cookies"| OperatorSink
+    OperatorWeb -.->|"SignalEventV1 beacon<br>paths may identify; no client IP field"| OperatorSink
     OperatorSink --> OperatorWarehouse
 
     OperatorWarehouse -->|"operator runs URL-builder SQL<br>once per refresh cadence"| OperatorReportUrl
@@ -54,7 +54,7 @@ flowchart TB
     RecipientBrowser -->|"HTTPS GET /r/?sa=..."| CfR
     CfR -->|"static HTML plus JS plus CSS<br>renderer decodes URL client-side"| RecipientBrowser
 
-    RecipientBrowser -.->|"optional intent capture<br>only when reader engages closing modal"| CfIntent
+    RecipientBrowser -.->|"optional intent capture<br>only when reader submits closing modal"| CfIntent
     CfIntent --> StromaStorage
 
     DevTerminal -.->|"optional install telemetry<br>opt-out via flag or env var"| CfInstall
@@ -115,7 +115,7 @@ flowchart TB
 Three explicit, separately-disclosed surfaces. None of them receive performance event data from the SDK by default.
 
 1. **`signal.stroma.design/r/` (static bundle delivery)** — Cloudflare logs see the URL request. Stroma does not parse, persist, or analyse the encoded report payload beyond standard CDN access-log retention.
-2. **`api.stroma.design/api/v1/intent`** — Receives intent events ONLY when a recipient engages the report's closing modal. Documented in [`PRIVACY.md`](../../PRIVACY.md) §"What Stroma receives".
+2. **`api.stroma.design/api/v1/intent`** — Receives intent events only when a recipient submits the report's closing modal. Documented in [`PRIVACY.md`](../../PRIVACY.md) §"What Stroma receives".
 3. **`api.stroma.design/api/v1/install`** — Receives install-lifecycle events from the CLI wizard. Opt-out via `--no-telemetry`, `STROMA_TELEMETRY=0`, `DO_NOT_TRACK=1`, or CI / non-TTY environments (auto-disabled silently).
 
 Retention windows for each surface: see [`docs/data-retention-sla.md`](../data-retention-sla.md).
@@ -124,11 +124,11 @@ Retention windows for each surface: see [`docs/data-retention-sla.md`](../data-r
 
 ## Data residency
 
-The only Stroma-controlled hops that carry operator-side or visitor-side data are the optional Stroma-hosted endpoints (intent + install). Performance events captured by the SDK never reach Stroma — they go to the operator-configured sink. Static-bundle delivery from Cloudflare Pages carries no per-operator data.
+Raw performance events go to the operator-configured sink, with no Stroma-hosted default. Hosted report requests are a separate disclosure: their URL query carries aggregate operator data to Cloudflare access logs. Optional intent/install endpoints receive their respective submissions. An offline file generated locally from original JSON avoids the hosted report request; see [the guide](../offline-evidence-brief.md).
 
 The architectural realisation: a procurement reviewer concerned about data residency for Signal Core reads this diagram and sees:
 - Operator-controlled SDK ingestion, operator-controlled warehouse, operator-controlled URL generation
-- Stroma-controlled static bundle (no operator data)
+- Stroma-controlled static bundle delivery (report query includes operator aggregate data)
 - Stroma-controlled optional endpoints (opt-in / opt-out, narrow per-event payloads, documented retention)
 
 ---

@@ -3,6 +3,12 @@
 Pre-publish checklist for any release that touches the `signal init` CLI.
 Runs once per `-rc.N` cut + once before the `0.x.0` GA. Blocks `npm publish`.
 
+## PR72 merge waiver — BigQuery only
+
+For [PR72](https://github.com/jonnybmc/signal/pull/72), the user explicitly accepted the missing BigQuery validations for merge. **The four real BigQuery dry-runs were not executed and are not recorded as passed.** No authorized project/dataset or configured BigQuery access was available in this task; regex/unit checks do not replace those runs.
+
+This acceptance permits merging PR72. It does not waive a future publication gate, live GTM/GA4/warehouse validation, Trusted Publisher verification, security findings, report-app type debt, or untested platform coverage. It does not authorize a version bump, release tag or npm publication. The unchecked SQL release gates below remain intentional.
+
 ## Automated gates (CI-runnable)
 
 Each must pass before the release tag is cut.
@@ -56,6 +62,10 @@ boot, and event-fires-in-the-target-sink check.
 
 Failure on any row blocks the release. Open an issue, fix the matrix
 entry + recipe, re-run the matching row from a fresh project.
+
+### Evidence from PR72 preparation
+
+All five fresh framework rows were exercised against the local candidate with Chromium/dataLayer, production builds where applicable, finite LCP, one event and duplicate-flush suppression. npm/pnpm/yarn/Bun pack checks and Node 18/20/22/24 consumer checks passed. Exact versions and limits are in [rc5-validation.md](../../docs/rc5-validation.md#fresh-framework-matrix). This does not verify every browser/sink combination or the post-publish live-user path. Reassess the matrix against the actual release candidate before tagging.
 
 ## Manual gate — live fresh-user dry run (P2-14)
 
@@ -118,10 +128,9 @@ regressions no automated test will hit.
 
 ## After publish
 
-- Run the live dry-run AGAIN against the freshly-published `@latest` to
+- Run the live dry-run AGAIN against the freshly-published explicit version and its intended dist-tag (`@next` for prereleases, `@latest` for stable) to
   confirm the published artifact behaves identically to the pre-publish
-  `pnpm pack` artifact. (Pre-1.0 the rc IS the `@latest` tag — see the
-  publish workflow's `Resolve npm dist-tag` step.)
+  `pnpm pack` artifact. The workflow validates the SDK version, release tag, and release prerelease flag before selecting the dist-tag.
 - If anything diverges, immediately deprecate the just-published version
   via `npm deprecate @stroma-labs/signal@<version> "Withdrawn — see <issue>"`.
 

@@ -10,7 +10,7 @@ If your situation isn't covered here, [open an issue](https://github.com/jonnybm
 
 ## 1. What gets captured, and how often
 
-Signal fires **one `SignalEventV1` per real document navigation** — when the browser tab becomes hidden (`visibilitychange`) or the page unloads (`pagehide`). This is the standard RUM pattern: it captures the full picture of the page lifetime, not a partial view at some arbitrary point.
+Signal fires **one `SignalEventV1` per real document navigation** — when the browser tab becomes hidden (`visibilitychange`) or the page unloads (`pagehide`). The first hide or manual flush ends measurement for that lifecycle; later activity is not continuously reported. Sampling and unavailable browser observations can reduce coverage.
 
 | Site shape | Event coverage |
 |---|---|
@@ -33,7 +33,7 @@ The SDK runs at **100% sample rate by default** — every real load that the lif
 |---|---|
 | < 1M | `1.0` (default) — keep everything |
 | 1M – 10M | `1.0` for first month while validating; consider `0.5` once you trust the data |
-| 10M+ | `0.1` – `0.3` to stay under the GA4 free-tier sampling threshold (see §3) |
+| 10M+ | `0.1` – `0.3` to reduce collection volume; reporting-query sampling is separate (see §3) |
 | 100M+ | `0.01` – `0.05`, or use the warehouse-direct path (§7) and skip GA4 entirely |
 
 Sampling decisions are made **once per page load** — you either get the full event or no event, not a partial. This means quartiles in your aggregate stay statistically meaningful.
@@ -96,38 +96,34 @@ If you're under the BigQuery free tier (1 TB scanned per month), Signal's query 
 
 Signal degrades gracefully — unsupported fields render as `null`, never as fabricated data. The classifier surfaces what it can defensibly measure.
 
-| Field family | Chrome / Edge | Safari (macOS / iOS) | Firefox | Android WebView | Notes |
-|---|---|---|---|---|---|
-| `fcp_ms`, `ttfb_ms` (universal vitals) | ✅ all versions | ✅ all versions | ✅ all versions | ✅ | Always populated when measurable. |
-| `lcp_ms`, `cls`, `inp_ms` (Chromium-only vitals) | ✅ all versions | ❌ not exposed | ❌ not exposed | ✅ | These fields are `null` on Safari and Firefox — Signal never fabricates metrics. Plan for a meaningful share of `null`s on iOS/macOS Safari traffic in particular. See [signal-technical-reference.md](./signal-technical-reference.md#vitals) for the canonical matrix. |
-| `vitals.navigation_timing` (per-subpart breakdown) | ✅ all versions | ✅ Safari 14+ | ✅ all versions | ✅ | TLS isolation requires HTTPS |
-| `vitals.loaf` (Long Animation Frame) | ✅ Chromium 123+ | ❌ not exposed | ❌ not exposed | ✅ Chromium 123+ | Field is `null` elsewhere |
-| `lcp_attribution` (which element was LCP) | ✅ all | ❌ not exposed | ❌ not exposed | ✅ | Field is `null` elsewhere |
-| `inp_attribution` (which interaction phase dominated) | ✅ Chromium 124+ | ❌ not exposed | ❌ not exposed | ✅ | Field is `null` elsewhere |
-| `context.effective_type`, `downlink`, `rtt` (Network Information API) | ✅ all | ❌ not exposed | ❌ not exposed | ✅ | Browser-reported, often imprecise — not used for tier classification |
-| `net_tier` (TCP-handshake substrate tier) | ✅ all | ✅ all | ✅ all | ✅ | Universal — derived from Navigation Timing, available everywhere |
-| `device_*` (cores / memory / screen / hardware) | ✅ all | ⚠️ memory_gb absent | ⚠️ memory_gb absent | ✅ | Safari + Firefox deliberately don't expose `deviceMemory`; classifier handles `null` |
+| Field family | Presence rule |
+|---|---|
+| FCP / TTFB | Requires a valid paint/navigation observation before flush; early exits and restore/prerender policy can yield null. |
+| LCP / CLS / INP | Requires the corresponding performance entry API and eligible observations. CLS has explicit observable-zero rules; INP needs a retained candidate at the required rank. |
+| Navigation subparts / network tier | Requires defensible navigation timing. Connection reuse, missing/redacted timing and non-load lifecycles can make classification unavailable. |
+| Attribution / Long Animation Frames | Requires the specific browser API and source fields; missing detail remains null. |
+| Network Information / device memory | Optional browser hints; not available in every browser. Network Information does not drive tier classification. |
 
-**Bottom line**: every field has a documented presence rule. The substrate-true axis (`net_tier`) is universal. The richer attribution + LoAF story is Chromium-biased — operators with mostly-iOS audiences will see those fields as `null`. That's honest, not broken.
+Browser capabilities change; inspect actual coverage rather than assuming all versions of a browser expose the same fields. The source uses feature detection. See [technical presence rules](./signal-technical-reference.md#vitals). The tested macOS Chromium/Firefox/WebKit matrix and narrower fresh-framework Chromium/dataLayer checks are recorded in [rc5-validation.md](./rc5-validation.md); they do not prove every API is available in every browser.
 
 ---
 
 ## 6. Privacy + data ownership
 
-Signal is engineered to be **zero-PII at the SDK level**. Specifically:
+The core minimizes capture, but paths, hostnames, labels and downstream joins can identify people or business records. Cookie-free collection is not an anonymity or consent guarantee. Specifically:
 
 | Concern | Posture |
 |---|---|
 | **Cookies set by Signal** | None. Signal does not set cookies. |
-| **PII captured by SDK** | None. No IP, no user ID, no email, no name, no UA string sent anywhere by the SDK. |
+| **Identifying data** | No deliberate identity fields in the performance core, but page/referrer/resource paths and custom labels may contain identifiers. The unreleased `normalizePath` hook templates paths only; review other fields and optional modules separately. |
 | **User-agent string** | Parsed for browser family bucket only (chrome / safari / firefox / edge / other). Full UA is NOT sent to your warehouse via the SDK. |
 | **Geolocation** | Not captured. |
-| **Cross-site tracking** | None. Signal does not correlate sessions across sites or visits. Each event is anonymous. |
-| **GDPR / POPI / CCPA consent** | The SDK does not capture personal data, so it generally does not require consent under these regimes. **Consult your DPO** — if you transmit Signal events into a warehouse that already has user identifiers, the joined dataset may be subject to consent requirements. |
+| **Cross-site tracking** | None. Signal does not correlate sessions across sites or visits. Independent event IDs do not guarantee anonymity. |
+| **Consent** | Your privacy owner must assess the configured capture, optional identifiers, destinations and joins. Signal does not guarantee a consent exemption. |
 | **Data residency** | The SDK sends events to whatever sink you configure (your GA4 property, your beacon endpoint, your warehouse). Stroma does not receive any of your event data. |
-| **The hosted `/r` report** | Encoded in the URL — anyone with the URL can view it. By design. Treat shareable report URLs the same way you'd treat a Google Sheet "anyone with link can view". |
-| **The `/api/v1/intent` demand-signal endpoint** | When a reader of `/r` opens the closing modal and picks one of the four customer-lens choices (e.g. "I just want a fix list for this page"), Stroma receives the intent payload server-side (event kind + capture id + optional email + optional cadence / pill_id / freeform text). The email field is universally optional — capturing intent in aggregate is the primary purpose; email is the affordance for direct follow-up. User-agent is captured server-side for product-research purposes. Documented in the report's privacy posture. |
-| **The `signal init` install wizard telemetry** | When a developer runs `npx @stroma-labs/signal init`, the CLI sends anonymous install telemetry to `api.stroma.design/api/v1/install` to help us prioritise framework support. We capture: framework + version, sink choice, sample rate, package manager, Node version, OS family, CLI version. We NEVER capture: project name, file paths, file contents, free text, emails, hostnames, full user-agent string. Disable per-run via `--no-telemetry`, persistent via `STROMA_TELEMETRY=0`, also honoured: `DO_NOT_TRACK=1` (industry standard). Auto-disabled in CI / non-TTY environments. IP addresses are not stored in `install_events`; Cloudflare's edge processes request IPs for routing and rate limiting (a property of any Cloudflare-hosted endpoint we cannot opt out of) — we do not log or persist them. |
+| **The hosted `/r` report** | Anyone with the URL can view it; Cloudflare access logs receive its query, including encoded aggregate data. An [offline brief](./offline-evidence-brief.md) omits labels by default, but anyone holding a copy can read and forward it. |
+| **The `/api/v1/intent` demand-signal endpoint** | When a reader of `/r` submits the closing modal after picking one of the four customer-lens choices (e.g. "I just want a fix list for this page"), Stroma receives the intent payload server-side (event kind + capture id + optional email + optional cadence / pill_id / freeform text). The email field is universally optional — capturing intent in aggregate is the primary purpose; email is the affordance for direct follow-up. User-agent is captured server-side for product-research purposes. Documented in the report's privacy posture. |
+| **The `signal init` install wizard telemetry** | When a developer runs `npx @stroma-labs/signal init`, the CLI sends anonymous install telemetry to `api.stroma.design/api/v1/install` to help us prioritise framework support. We capture: framework + version, sink choice, sample rate, package manager, Node version, OS family, CLI version. We NEVER capture: project name, file paths, file contents, free text, emails, hostnames, full user-agent string. Disable per-run via `--no-telemetry`, persistent via `STROMA_TELEMETRY=0`, also honoured: `DO_NOT_TRACK=1` (industry standard). Auto-disabled in CI / non-TTY environments. IP addresses are not stored in `install_events`; Cloudflare's edge processes request IPs for routing and rate limiting (a property of any Cloudflare-hosted endpoint we cannot opt out of) — client source alone does not verify edge logging or retention settings. |
 
 The SDK is open-source MIT — you can audit every byte of what it captures. See [why-signal.md](./why-signal.md) for the design philosophy on what NOT to capture and why.
 
@@ -137,7 +133,7 @@ The SDK is open-source MIT — you can audit every byte of what it captures. See
 
 Use Signal's beacon path instead of GA4 if any of these apply:
 
-- You're already over the GA4 10M-events-per-month sampling threshold and don't want to manage sample rates
+- Your GA4 reporting queries encounter sampling, or export limits do not fit your collection volume
 - You want events to land in a warehouse outside Google's stack (Snowflake, ClickHouse, Postgres, BigQuery direct without GA4)
 - You need access to the **full SignalEventV1 surface**, not the GA4 25-param compact subset (e.g., the rich `vitals.navigation_timing` block is warehouse-only)
 - Your team's analytics stack doesn't include GA4 (some EU-headquartered teams have moved off GA4 for residency reasons)

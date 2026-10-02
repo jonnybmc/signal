@@ -731,3 +731,114 @@ describe('observeVitals', () => {
     expect(observer.snapshot().third_party).toBeNull();
   });
 });
+
+describe('CLS session windows and bounded INP', () => {
+  it('reports observable zero and keeps unsupported CLS missing', () => {
+    setupObserverTest();
+    const observer = observeVitals();
+    expect(observer.snapshot().cls).toBeNull();
+    emitEntries('paint', [{ name: 'first-contentful-paint', startTime: 100 } as PerformanceEntry]);
+    expect(observer.snapshot().cls).toBe(0);
+    vi.stubGlobal('PerformanceObserver', undefined);
+    expect(observeVitals().snapshot().cls).toBeNull();
+  });
+
+  it('takes the maximum window, splitting at exactly one second and five seconds', () => {
+    setupObserverTest();
+    const observer = observeVitals();
+    emitEntries('paint', [{ name: 'first-contentful-paint', startTime: 0 } as PerformanceEntry]);
+    const shifts = [0, 900, 1800, 2700, 3600, 4500, 5000, 6000];
+    emitEntries(
+      'layout-shift',
+      shifts.map((startTime) => ({ startTime, value: 0.1, hadRecentInput: false }) as unknown as PerformanceEntry)
+    );
+    emitEntries('layout-shift', [{ startTime: 6050, value: 10, hadRecentInput: true } as unknown as PerformanceEntry]);
+    expect(observer.snapshot().cls).toBe(0.6);
+  });
+
+  it.each([49, 50, 100, 1000, 4999, 5000])('uses total interaction count for %i interactions', (count) => {
+    setupObserverTest();
+    const observer = observeVitals();
+    const entries = Array.from(
+      { length: count },
+      (_, i) => ({ interactionId: 7 * (i + 1), duration: i + 16 }) as unknown as PerformanceEntry
+    );
+    emitEntries('event', entries);
+    // Duplicate events for one gesture do not change the denominator.
+    emitEntries('event', entries.slice(-1));
+    expect(observer.snapshot().inp_ms).toBe(count >= 5000 ? null : count + 15 - Math.floor(count / 50));
+  });
+
+  it('uses native counts including fast interactions omitted by Event Timing', () => {
+    setupObserverTest();
+    Object.assign(performance, { interactionCount: 100 });
+    const observer = observeVitals();
+    emitEntries(
+      'event',
+      [100, 200, 300].map((duration, i) => ({ duration, interactionId: 7 * (i + 1) }) as unknown as PerformanceEntry)
+    );
+    expect(observer.snapshot().inp_ms).toBe(100);
+  });
+
+  it('does not invent an INP candidate when fast interactions were omitted', () => {
+    setupObserverTest();
+    Object.assign(performance, { interactionCount: 100 });
+    const observer = observeVitals();
+    emitEntries('event', [{ duration: 300, interactionId: 7 } as unknown as PerformanceEntry]);
+    expect(observer.snapshot().inp_ms).toBeNull();
+  });
+
+  it('excludes buffered pre-restore entries and resets the native count baseline', () => {
+    setupObserverTest();
+    Object.assign(performance, { interactionCount: 100 });
+    const observer = observeVitals({ startTime: 2000, resetInteractionCount: true });
+    Object.assign(performance, { interactionCount: 101 });
+    queueEntries('event', [
+      { startTime: 1000, duration: 900, interactionId: 7 },
+      { startTime: 2100, duration: 90, interactionId: 707 }
+    ] as unknown as PerformanceEntry[]);
+    queueEntries('layout-shift', [
+      { startTime: 1000, value: 0.9 },
+      { startTime: 2100, value: 0.1 }
+    ] as unknown as PerformanceEntry[]);
+    expect(observer.snapshot()).toMatchObject({ inp_ms: 90, cls: 0.1 });
+  });
+});
+
+describe('LCP path normalization', () => {
+  it('normalizes resource paths and debug URL without changing timing matching', () => {
+    setupObserverTest();
+    const normalizePath = vi.fn(() => '/assets/:id');
+    const observer = observeVitals({ normalizePath });
+    emitEntries('largest-contentful-paint', [
+      { startTime: 100, url: 'https://cdn.test/private-user.png?token=secret', element: { tagName: 'IMG' } }
+    ] as unknown as PerformanceEntry[]);
+    expect(observer.snapshot().lcp_attribution?.resource_url).toBe('https://cdn.test/assets/:id');
+    expect(observer.debugSnapshot().rawLcpEntry?.url).toBe('https://cdn.test/assets/:id');
+    expect(normalizePath).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('CLS gap boundary', () => {
+  it.each([
+    [999, 0.7],
+    [1000, 0.4]
+  ])('splits only when the gap reaches one second (%i ms)', (gap, expected) => {
+    setupObserverTest();
+    const observer = observeVitals();
+    emitEntries('paint', [{ name: 'first-contentful-paint', startTime: 0 } as PerformanceEntry]);
+    emitEntries('layout-shift', [
+      { startTime: 100, value: 0.3 },
+      { startTime: 100 + gap, value: 0.4 }
+    ] as unknown as PerformanceEntry[]);
+    expect(observer.snapshot().cls).toBe(expected);
+  });
+  it('does not report CLS for a background load even when paint/shift records exist', () => {
+    setupObserverTest();
+    Object.assign(document, { visibilityState: 'hidden' });
+    const observer = observeVitals();
+    emitEntries('paint', [{ name: 'first-contentful-paint', startTime: 0 } as PerformanceEntry]);
+    emitEntries('layout-shift', [{ startTime: 100, value: 0.3 }] as unknown as PerformanceEntry[]);
+    expect(observer.snapshot().cls).toBeNull();
+  });
+});

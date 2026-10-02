@@ -28,7 +28,7 @@ describe('spa-ssr-caveats.md alignment with runtime.ts', () => {
       { framework: 'Remix v2 (legacy)', mechanism: '`entry.client.tsx`' },
       { framework: 'Nuxt 3', mechanism: '`.client.ts` plugin suffix' },
       { framework: 'Angular Universal', mechanism: '`isPlatformBrowser(platformId)`' },
-      { framework: 'SvelteKit', mechanism: "`import { browser } from '$app/environment'`" }
+      { framework: 'SvelteKit (Svelte 5)', mechanism: '`$effect`' }
     ];
     for (const { framework, mechanism } of FRAMEWORK_GUARDS) {
       it(`${framework} guard mechanism reads "${mechanism}"`, () => {

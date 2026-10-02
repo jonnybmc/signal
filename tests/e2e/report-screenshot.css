@@ -1,0 +1,5 @@
+/* Capture the full report section without viewport-fixed chrome covering it. */
+.scroll-nav,
+.scroll-progress {
+  visibility: hidden !important;
+}

@@ -1,10 +1,11 @@
 <img src="./docs/images/signal-stroma-logo.png" alt="Signal" width="220" />
 
-[![CI](https://github.com/jonnybmc/stroma-signal/actions/workflows/ci.yml/badge.svg)](https://github.com/jonnybmc/stroma-signal/actions/workflows/ci.yml)
+[![CI](https://github.com/jonnybmc/signal/actions/workflows/ci.yml/badge.svg)](https://github.com/jonnybmc/signal/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@stroma-labs/signal?label=npm)](https://www.npmjs.com/package/@stroma-labs/signal)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-> 🧪 **Release Candidate** — while we are pre-1.0 the rc sits on the `latest` dist-tag (see badge above for current version), so `npm install @stroma-labs/signal` resolves to it directly. The API can change before `1.0`.
+> 🧪 **Release Candidate** — the API can change before `1.0`. The source tree includes unreleased rc5 preparation; the package version remains `0.1.0-rc.4`.
+> The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4.
 
 **Other RUM tools tell you what your average user experiences. Signal tells you _who_ is getting which experience — and lets you act on it.**
 
@@ -18,7 +19,7 @@ A small browser library that classifies every page load by the user's real netwo
 | **Lighthouse**                         | Lab Web Vitals on a single test device            | What real users on real networks actually feel                                 |
 | **CrUX**                               | Aggregated Chrome field data                      | Per-session detail, attribution, your own segmentation                         |
 | **Datadog RUM / NewRelic / SpeedCurve** | Dashboards, alerting, vendor opinions             | Honest segmentation by real network tier; you also pay enterprise pricing      |
-| **Signal**                             | Real-user network + device tier + Navigation Timing breakdown per page load, joined to your own warehouse, in a ~6 KB SDK | A dashboard (we don't ship one — you bring your own analytics)                 |
+| **Signal**                             | Real-user network + device tier + Navigation Timing breakdown per page load, joined to your own warehouse, in a ~6.8 KiB gzipped runtime | A dashboard (we don't ship one — you bring your own analytics)                 |
 
 Signal sits one layer beneath every option above: it produces the per-session evidence the others can't or won't capture, and you wire it into whatever you already use.
 
@@ -30,7 +31,7 @@ GA4 is comprehensive on conversions, sessions, and attribution. It's deliberatel
 |---|---|---|
 | Which network were users actually on? | `effective_type` — a browser hint that bins both fibre and a congested 4G tower as `4g` | TCP-handshake-based network tier (urban / moderate / constrained moderate / constrained) — measured per session, not guessed |
 | Why was the page slow? | LCP / INP scores | LCP element + render-delay phase, INP interaction-phase breakdown, third-party scripts that loaded before paint |
-| Per-session detail? | Free tier samples after 10M events / month | Every event, joined to your existing warehouse, no sampling |
+| Per-session detail? | Sampling depends on the report query; export has separate limits | Events go to your configured sink; optional SDK sampleRate controls collection |
 | Long Animation Frame attribution? | Not captured | Chromium 123+ worst-frame duration + dominant cause (script / layout / style / paint) |
 | Navigation Timing decomposition? | Not captured | Per-subpart DNS / TCP / TLS / request / response / SW timings, three TTFB definitions (raw, connection, activation-adjusted), Early-Hints provenance |
 | Where does the raw data live? | Google's warehouse, GA4 schema | Your warehouse, your schema — joinable to spend, conversions, anything else you already have |
@@ -103,7 +104,7 @@ One event per page load with:
 - **Long Animation Frame** attribution on Chromium 123+
 - **Background-tab filter** so percentiles aren't poisoned by hidden-tab loads
 
-No PII. No cookies set by us. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
+No cookies are set by the core SDK. It captures page/referrer paths and selected resource context; those paths can contain personal or business identifiers. Query strings and fragments are stripped, but that does not guarantee the remaining path is anonymous. In the unreleased source, use the opt-in [`normalizePath` hook](./docs/client-integrations.md#optional-path-normalization-unreleased), or sanitise your sink output on existing releases. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
 
 ## From SDK to shareable report URL
 
@@ -115,6 +116,8 @@ The SDK is just collection. The full path to a shareable URL:
 4. **Share the resulting `signal_report_url`** — recipients see your real-user performance gap at `signal.stroma.design/r/...`, no login required
 
 For the production operating model (manual vs scheduled refresh, where to surface the URL, what to do when rows lag), see [production-report-automation.md](./docs/production-report-automation.md).
+
+For a file handoff, [download an offline evidence brief](./docs/offline-evidence-brief.md) from original aggregate JSON or an existing report URL. The exported HTML works without JavaScript or network access, omits site labels by default, and includes coverage limits and an engineering handoff. Opening a hosted `/r?...` URL still sends the encoded aggregate to Cloudflare access logs; downloading later cannot undo that exposure.
 
 ## Where to go next
 
@@ -146,7 +149,7 @@ npm audit signatures
 # → "1 package has a verified attestation"
 ```
 
-That confirms the tarball was built by [this repository's publish workflow](https://github.com/jonnybmc/stroma-signal/actions/workflows/publish.yml) on the exact commit referenced in the release notes.
+That confirms the tarball was built by [this repository's publish workflow](https://github.com/jonnybmc/signal/actions/workflows/publish.yml) on the exact commit referenced in the release notes.
 
 ---
 
@@ -155,8 +158,8 @@ That confirms the tarball was built by [this repository's publish workflow](http
 Local development (you don't need this to use the SDK):
 
 ```bash
-git clone https://github.com/jonnybmc/stroma-signal.git
-cd stroma-signal
+git clone https://github.com/jonnybmc/signal.git
+cd signal
 pnpm install --frozen-lockfile
 pnpm test:unit       # full unit suite
 pnpm dev:report      # /r and /build at localhost:4174
@@ -171,12 +174,12 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for tone, commit conventions, and the p
 | ----------------------------- | ---------------------------------------------------------------- |
 | `packages/signal`             | The published `@stroma-labs/signal` SDK                          |
 | `packages/signal-contracts`   | Shared types, URL codec, aggregation rules, fixtures, SQL templates |
-| `apps/signal-report`          | Renders the hosted Tier Report at `/r` and the zero-code builder at `/build` |
+| `apps/signal-report`          | Renders the hosted Tier Report at `/r` and the builder at `/build`, and dedicated offline HTML briefs |
 | `apps/signal-spike-lab`       | Local proof-of-life harness used for SDK validation              |
 
 ### Release process
 
-The publish workflow runs on every GitHub Release tagged `vX.Y.Z`. While we are pre-1.0 every release publishes to the `latest` dist-tag so the rc is install-by-default. Once `1.0.0` ships, prerelease tags (`-rc.N`, `-beta.N`) move back to `next` and stable tags stay on `latest`. Auth is via [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) — no long-lived `NPM_TOKEN` required.
+The publish workflow runs on a published GitHub Release or manual dispatch with an explicit tag. Prereleases publish to `next`; stable releases publish to `latest`. It validates the package version, tag and release prerelease flag. A merge runs CI and may trigger the connected Cloudflare Pages deployment; it does not publish npm or create a release. See the [release checklist](./docs/release-deployment-checklist.md) for remaining gates. Auth is via [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) — no long-lived `NPM_TOKEN` required.
 
 ## License
 

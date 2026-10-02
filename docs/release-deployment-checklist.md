@@ -2,6 +2,12 @@
 
 Use this as the final release and launch gate for `@stroma-labs/signal` v0.1. It combines the npm-package checks, first-publish preflight, and live pipeline validation in one place.
 
+## Merge and publication are separate
+
+PR72's missing BigQuery validations were accepted **for that merge only**; they remain unrun, not passed. See the [scoped waiver](../packages/signal/RELEASE-GATE.md#pr72-merge-waiver--bigquery-only) and [validation evidence](./rc5-validation.md). Other release gates and existing debt were not blanket-waived.
+
+A merge to `main` runs CI and may update the hosted report through the connected Cloudflare Pages integration. The npm workflow runs only on a published GitHub Release or manual dispatch with an explicit tag. It sends prereleases to `next` and stable versions to `latest`, validating version/tag/prerelease metadata. Merging does not create a release or move existing npm tags.
+
 ## 1. One-Time Publish Preflight
 
 Before the first public publish:
@@ -10,7 +16,7 @@ Before the first public publish:
 - confirm the publishing account has permission to publish `@stroma-labs/signal`
 - confirm the npm Trusted Publisher policy on `@stroma-labs/signal` matches this repo + the `Publish` workflow on `main` (Settings → Trusted publishers on npmjs.com). Trusted Publishing is the auth model — there is no `NPM_TOKEN` secret, and adding one would be a regression.
 - confirm the publish workflow still keeps `id-token: write` plus `npm publish --provenance`
-- confirm the release target is the canonical repo: `jonnybmc/stroma-signal`
+- confirm the release target is the canonical repo: `jonnybmc/signal`. The package metadata/readiness assertions still contain the legacy `jonnybmc/stroma-signal` name; verify the npm Trusted Publisher repository/workflow binding after the rename before publishing. This checklist does not change credentials or access policy.
 
 ## 2. Repo Gates
 
@@ -23,7 +29,10 @@ pnpm test:unit
 pnpm build
 pnpm check:release
 pnpm test:e2e:smoke
+pnpm test:cli:pack
 ```
+
+Root `pnpm typecheck` checks contracts/SDK, not the report app. The current direct app check retains baseline errors; see the validation record. Run the full browser matrix for browser changes and the four real SQL dry-runs in the package release gate before publication.
 
 Package audit:
 
@@ -47,7 +56,7 @@ Before publishing `v0.1.0`:
 - `CHANGELOG.md` moves from `Unreleased` to the actual release date on the release commit
 - the Git tag matches the package version exactly, e.g. `v0.1.0`
 - the GitHub Release uses that same tag
-- the publish workflow runs `pnpm ci`, installs Chromium, runs `pnpm test:e2e:smoke`, runs `pnpm check:release`, and only then publishes
+- the publish workflow runs `pnpm run ci`, installs Chromium, runs `pnpm test:e2e:smoke`, runs `pnpm check:release`, and only then publishes
 
 ## 4. Live Staging Validation
 
@@ -79,6 +88,8 @@ For the generated hosted report URL:
 - legacy links show the legacy freshness warning instead of a fake date
 - malformed or contradictory URLs fail closed in both `/build` and `/r`
 
+For an offline download, also check local file readability with JavaScript disabled, zero network/storage behavior, omitted default labels, escaping, coverage/fidelity caveats and print layout. See [offline usage](./offline-evidence-brief.md).
+
 ## 6. Visual and QA Review
 
 Run the local Chromium visual suite when UI changes are intentional:
@@ -93,7 +104,7 @@ If the diffs are intentional:
 pnpm test:e2e:visual:update
 ```
 
-Keep the checked-in Darwin and Linux Chromium snapshots aligned with the committed UI.
+The current source includes seven reviewed Darwin Chromium baselines. Linux/Windows visual coverage is not established by those files or by Linux functional smoke CI; create and review platform-specific baselines in their target environment rather than copying Darwin images.
 
 ## 7. Operational Controls
 

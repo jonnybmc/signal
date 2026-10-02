@@ -54,7 +54,7 @@ Opt-in module for capturing ad-click identifiers and UTM tags into the operator'
 
 This module deliberately does not capture:
 
-- Personally identifiable information of any kind
+- Deliberate name/email fields; click identifiers, UTM values and paths can nevertheless identify people or business records, so this is not an anonymity guarantee
 - Full URL with query string (only the pathname is captured; query string is parsed for known click-ID and UTM keys, then discarded)
 - Email addresses
 - Fingerprint hashes

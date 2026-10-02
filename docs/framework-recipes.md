@@ -203,7 +203,7 @@ Same browser-only-entry guarantee as React Router v7. Don't use the prior `useEf
 ### React notes
 
 - **React Strict Mode** calls effects twice in development. This does not matter — `init()` is idempotent. The second call returns the existing controller.
-- **SSR (Next.js):** Signal touches browser APIs (`navigator`, `document`). The `'use client'` directive or `typeof window` guard keeps it out of server rendering.
+- **SSR (Next.js):** Use the client-component boundary and initialize inside `useEffect` as shown above. The `'use client'` directive alone does not make render-time browser API calls safe during server prerendering.
 - **React Router v7 framework mode + Remix v2:** Use `entry.client.tsx` as shown above. The file runs only in the browser; server bundles never reach it.
 - **SPA navigations:** Signal fires one event per real page load, not per client-side route change. See [SPA/SSR caveats](./spa-ssr-caveats.md).
 
@@ -358,5 +358,5 @@ new App({ target: document.getElementById('app')! });
 
 ### Svelte notes
 
-- **SSR (SvelteKit):** The `browser` check from `$app/environment` is the idiomatic client-only guard.
+- **SSR (SvelteKit):** Use `$effect` for Svelte 5 as shown above; the `$app/environment` `browser` guard remains the documented legacy fallback.
 - **SPA navigations:** One event per real page load. See [SPA/SSR caveats](./spa-ssr-caveats.md).
