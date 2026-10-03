@@ -3,6 +3,12 @@
 Pre-publish checklist for any release that touches the `signal init` CLI.
 Runs once per `-rc.N` cut + once before the `0.x.0` GA. Blocks `npm publish`.
 
+## RC5 publication exception — BigQuery unrun
+
+After PR72 merged, the user separately authorized publication of `0.1.0-rc.5` as a prerelease while retaining BigQuery as **waived, not passed**. This acceptance covers the four unrun BigQuery dry-runs for rc5 only. The PR72 decision below remains the historical merge-only decision; it does not itself authorize publication. No later release inherits the rc5 exception automatically.
+
+Other recorded limitations remain open: live GTM/GA4/warehouse integration, report-app type debt, dependency advisories and unverified visual platforms. They are disclosed in the rc5 changelog and validation record, not marked as passed. The release still requires automated checks, the local package/framework evidence, successful existing OIDC authorization and registry/provenance/install verification. No credential or Trusted Publisher access change is authorized by this exception.
+
 ## PR72 merge waiver — BigQuery only
 
 For [PR72](https://github.com/jonnybmc/signal/pull/72), the user explicitly accepted the missing BigQuery validations for merge. **The four real BigQuery dry-runs were not executed and are not recorded as passed.** No authorized project/dataset or configured BigQuery access was available in this task; regex/unit checks do not replace those runs.
@@ -54,18 +60,18 @@ conventions changing). This per-framework matrix MUST be ticked before
 any tagged release. Each row is a fresh-project install, wizard run,
 boot, and event-fires-in-the-target-sink check.
 
-- [ ] **Next.js App Router** — `npx create-next-app@latest` (App Router) → `signal init` → `pnpm dev` boots → page loads with snippet → `dataLayer.find(e => e.event === 'perf_tier_report')` returns event.
-- [ ] **React Router v7 (framework mode)** — fresh `react-router` v7 framework-mode app → `signal init` → boot → emit.
-- [ ] **Remix v2** — fresh Remix v2 app → `signal init` → boot → emit.
-- [ ] **SvelteKit (Svelte 5 runes)** — fresh SvelteKit app on Svelte 5 → `signal init` → boot → emit. **Most-likely-to-drift** (runes API stable but tooling shifts); always run a fresh install, never assume the prior dry-run still applies.
-- [ ] **Vanilla** — plain HTML page with `<script type="module">` from the wizard's snippet → load → emit.
+- [x] **Next.js App Router** — `npx create-next-app@latest` (App Router) → `signal init` → `pnpm dev` boots → page loads with snippet → `dataLayer.find(e => e.event === 'perf_tier_report')` returns event.
+- [x] **React Router v7 (framework mode)** — fresh `react-router` v7 framework-mode app → `signal init` → boot → emit.
+- [x] **Remix v2** — fresh Remix v2 app → `signal init` → boot → emit.
+- [x] **SvelteKit (Svelte 5 runes)** — fresh SvelteKit app on Svelte 5 → `signal init` → boot → emit. **Most-likely-to-drift** (runes API stable but tooling shifts); always run a fresh install, never assume the prior dry-run still applies.
+- [x] **Vanilla** — plain HTML page with `<script type="module">` from the wizard's snippet → load → emit.
 
 Failure on any row blocks the release. Open an issue, fix the matrix
 entry + recipe, re-run the matching row from a fresh project.
 
-### Evidence from PR72 preparation
+### Evidence from PR72 preparation and rc5 candidate recheck
 
-All five fresh framework rows were exercised against the local candidate with Chromium/dataLayer, production builds where applicable, finite LCP, one event and duplicate-flush suppression. npm/pnpm/yarn/Bun pack checks and Node 18/20/22/24 consumer checks passed. Exact versions and limits are in [rc5-validation.md](../../docs/rc5-validation.md#fresh-framework-matrix). This does not verify every browser/sink combination or the post-publish live-user path. Reassess the matrix against the actual release candidate before tagging.
+All five fresh framework rows were exercised during PR72 preparation and rechecked with the packed rc5 candidate with Chromium/dataLayer, production builds where applicable, finite LCP, one event and duplicate-flush suppression. npm/pnpm/yarn/Bun pack checks and Node 18/20/22/24 consumer checks passed. Exact versions and limits are in [rc5-validation.md](../../docs/rc5-validation.md#fresh-framework-matrix). This does not verify every browser/sink combination or the post-publish live-user path. Reassess the matrix against the actual release candidate before tagging.
 
 ## Manual gate — live fresh-user dry run (P2-14)
 

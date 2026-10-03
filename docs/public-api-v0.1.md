@@ -2,7 +2,7 @@
 
 This document is the canonical public package contract for `@stroma-labs/signal` v0.1.
 
-This describes the current source contract. Additions explicitly marked **unreleased** are not present in the published rc4 tarball; consult the changelog for the installed version.
+This describes the rc5 source contract. Additions marked **rc5** are not present in rc4; the versioned changelog is the source of truth for the installed version.
 
 ## Package Shape
 
@@ -74,7 +74,7 @@ init({
   networkTierThresholds,
   deviceTierOverride,
   generateTarget,
-  normalizePath, // unreleased addition
+  normalizePath, // added in rc5
   debug,
   packageVersion
 });
@@ -95,7 +95,7 @@ init({
 - `eventIdFactory?: () => string` — effect-injection point for deterministic event IDs in tests
 - `logger?: SignalRuntimeLogger` — route runtime warnings into your own observability without monkeypatching `console`
 
-### Optional path normalization (unreleased)
+### Optional path normalization (rc5)
 
 `normalizePath?: SignalPathNormalizer` is additive. The main entry exports both `SignalPathNormalizer` and `SignalPathField` types:
 
@@ -104,7 +104,7 @@ type SignalPathField = 'page' | 'referrer' | 'lcp-resource';
 type SignalPathNormalizer = (pathname: string, field: SignalPathField) => string | null;
 ```
 
-Return an absolute pathname or `null`. Query strings, fragments, whitespace, backslashes and protocol-relative output are rejected. Throws/invalid output fail closed: required page path becomes `/`, optional URLs become `null`. Referrer/resource origins are preserved. The default behavior is unchanged. Hostnames, `generateTarget` labels, optional ad-context fields and customer sink enrichment are not normalized. See [the integration example](./client-integrations.md#optional-path-normalization-unreleased).
+Return an absolute pathname or `null`. Query strings, fragments, whitespace, backslashes and protocol-relative output are rejected. Throws/invalid output fail closed: required page path becomes `/`, optional URLs become `null`. Referrer/resource origins are preserved. The default behavior is unchanged. Hostnames, `generateTarget` labels, optional ad-context fields and customer sink enrichment are not normalized. See [the integration example](./client-integrations.md#optional-path-normalization-rc5).
 
 ## Public sinks
 

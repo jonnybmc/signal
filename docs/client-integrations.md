@@ -12,9 +12,9 @@ If you are not implementing code and only need the launch recipe for a shareable
 
 The hosted Tier Report is a first-class companion artifact, but it is not a diagnostic, attribution, or commercial modelling artifact.
 
-## Optional path normalization (unreleased)
+## Optional path normalization (rc5)
 
-The current source adds this option; published rc4 does not include it. Initialize inside the framework's client lifecycle as early as practical, before in-app navigation. Page/referrer and visibility context are captured at observation start, after prerender activation, and again on bfcache restore. Later soft navigation does not change the entry path or emit a second event.
+Rc5 adds this option; rc4 does not include it. Initialize inside the framework's client lifecycle as early as practical, before in-app navigation. Page/referrer and visibility context are captured at observation start, after prerender activation, and again on bfcache restore. Later soft navigation does not change the entry path or emit a second event.
 
 ```ts
 import { init, createBeaconSink, type SignalPathNormalizer } from '@stroma-labs/signal';
@@ -27,7 +27,7 @@ const normalizePath: SignalPathNormalizer = (pathname, field) => {
 init({ sinks: [createBeaconSink({ endpoint: '/rum/signal' })], normalizePath });
 ```
 
-Return `/…` or `null`. Errors and invalid output fail closed (`/` for the required page path, `null` for optional URLs). Referrer/resource origins remain visible. Query/hash stripping alone is not anonymization; this example only handles the illustrated route. Review other paths, hostnames, custom `generateTarget` labels, optional ad context and downstream enrichment separately. See the [full API rules](./public-api-v0.1.md#optional-path-normalization-unreleased).
+Return `/…` or `null`. Errors and invalid output fail closed (`/` for the required page path, `null` for optional URLs). Referrer/resource origins remain visible. Query/hash stripping alone is not anonymization; this example only handles the illustrated route. Review other paths, hostnames, custom `generateTarget` labels, optional ad context and downstream enrichment separately. See the [full API rules](./public-api-v0.1.md#optional-path-normalization-rc5).
 
 For a portable aggregate handoff, use the companion app's [offline evidence brief](./offline-evidence-brief.md); it is not an SDK export or raw-event download.
 

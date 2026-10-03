@@ -1,5 +1,7 @@
 # RC5 preparation roadmap
 
+This records the original PR72 scope. Subsequent user authorization permits preparation and publication of rc5 on `next`, with BigQuery explicitly waived/unrun for that candidate. The versioned [changelog](../CHANGELOG.md) and [validation record](./rc5-validation.md) supersede the original no-release constraints below for rc5 only.
+
 Status: implementation complete; PR72 documentation reconciliation and normal merge authorized. No release date, version bump or npm publication approved.
 Baseline: `8185b8460297f953df727af93e8f5c5c7f6c204d` (verified GitHub main).
 SDK baseline: `0.1.0-rc.4`; private workspace version: `0.1.0`.

@@ -1,6 +1,6 @@
 {
   "name": "@stroma-labs/signal",
-  "version": "0.1.0-rc.4",
+  "version": "0.1.0-rc.5",
   "description": "Browser instrumentation package for measuring real-user network, device, and performance tiers.",
   "license": "MIT",
   "author": "Jonathan Booysen",
@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jonnybmc/stroma-signal.git",
+    "url": "git+https://github.com/jonnybmc/signal.git",
     "directory": "packages/signal"
   },
-  "homepage": "https://github.com/jonnybmc/stroma-signal#readme",
+  "homepage": "https://github.com/jonnybmc/signal#readme",
   "bugs": {
-    "url": "https://github.com/jonnybmc/stroma-signal/issues"
+    "url": "https://github.com/jonnybmc/signal/issues"
   },
   "funding": {
     "type": "github",

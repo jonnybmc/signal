@@ -85,9 +85,9 @@ assert.ok(
   !('dependencies' in packageJson) || Object.keys(packageJson.dependencies).length === 0,
   'Published package must not declare runtime dependencies'
 );
-assertIncludes(packageJson.repository?.url, 'github.com/jonnybmc/stroma-signal', 'Repository URL');
-assertIncludes(packageJson.homepage, 'github.com/jonnybmc/stroma-signal', 'Homepage');
-assertIncludes(packageJson.bugs?.url, 'github.com/jonnybmc/stroma-signal/issues', 'Bugs URL');
+assertIncludes(packageJson.repository?.url, 'github.com/jonnybmc/signal', 'Repository URL');
+assertIncludes(packageJson.homepage, 'github.com/jonnybmc/signal', 'Homepage');
+assertIncludes(packageJson.bugs?.url, 'github.com/jonnybmc/signal/issues', 'Bugs URL');
 
 for (const [entry, target] of Object.entries(packageJson.exports ?? {})) {
   assert.ok(target.types, `Missing types export for ${entry}`);

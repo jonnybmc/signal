@@ -115,7 +115,7 @@ The core minimizes capture, but paths, hostnames, labels and downstream joins ca
 | Concern | Posture |
 |---|---|
 | **Cookies set by Signal** | None. Signal does not set cookies. |
-| **Identifying data** | No deliberate identity fields in the performance core, but page/referrer/resource paths and custom labels may contain identifiers. The unreleased `normalizePath` hook templates paths only; review other fields and optional modules separately. |
+| **Identifying data** | No deliberate identity fields in the performance core, but page/referrer/resource paths and custom labels may contain identifiers. The rc5 `normalizePath` hook templates paths only; review other fields and optional modules separately. |
 | **User-agent string** | Parsed for browser family bucket only (chrome / safari / firefox / edge / other). Full UA is NOT sent to your warehouse via the SDK. |
 | **Geolocation** | Not captured. |
 | **Cross-site tracking** | None. Signal does not correlate sessions across sites or visits. Independent event IDs do not guarantee anonymity. |

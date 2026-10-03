@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Source documentation updated for PR72; unreleased behavior is marked below._
+_Source documentation aligned with rc5; see the versioned changelog for release history._
 
 This document describes the privacy posture of Signal — the open-source landing-page telemetry SDK published as `@stroma-labs/signal`, the hosted `/r` Tier Report at `signal.stroma.design/r/`, and the optional Stroma-hosted endpoints the SDK can be configured to talk to.
 
@@ -38,7 +38,7 @@ The SDK emits at most once per observed lifecycle, on the first hide/pagehide or
 | Page context | `host`, `url`, `ref`, selected resource URLs | Page/referrer/resource origin/path context; query strings and fragments are stripped. Paths and hostnames can still contain identifiers. |
 | Event metadata | `event_id`, `ts`, `v` | Per-event UUID and timestamp. |
 
-When the optional ad-context capture module is enabled (`signal.init({ adContextCapture: true })`), it additionally captures ad-click identifiers (gclid, gbraid, wbraid, fbclid, msclkid, dclid, srsltid) and UTM tags into a separate row keyed by `capture_id`. The full surface is documented in [`docs/ad-context-capture.md`](./docs/ad-context-capture.md). This module is **opt-in only** — disabled by default.
+The repository also defines an optional ad-context capture contract for click identifiers and UTM tags, documented in [`docs/ad-context-capture.md`](./docs/ad-context-capture.md). Rc5's published performance SDK does not implement an `adContextCapture` init option. Any separate operator implementation of that contract needs its own capture, consent and storage review; it is not enabled by installing this SDK.
 
 ---
 
@@ -240,7 +240,7 @@ contract does not supply exact window start/end timestamps.
 
 Core collection captures entry page/referrer paths and selected LCP resource
 paths. Query/fragment removal does not remove identifiers in path segments. The
-unreleased optional `normalizePath` hook can replace paths with operator route templates;
+rc5 optional `normalizePath` hook can replace paths with operator route templates;
 it does not anonymise hosts, custom target labels, or customer-added identity
 fields. Raw events remain with the customer's configured sinks; hosted report
 query logging is a separate data flow.

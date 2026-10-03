@@ -15,7 +15,7 @@ A `signal_report_url` of the form `https://signal.stroma.design/r?...` that you 
 One command — the wizard detects your framework, asks the configuration questions, auto-installs `@stroma-labs/signal` via your project's package manager, then prints the framework-correct snippet for you to paste (covers Next, React Router 7, Remix v2, Nuxt, SvelteKit, Vue, Vite, Angular, vanilla):
 
 ```bash
-npx @stroma-labs/signal init
+npx @stroma-labs/signal@0.1.0-rc.5 init
 ```
 
 The package is ESM-only and has no runtime dependencies. Published subpaths are listed in [public-api-v0.1.md](./public-api-v0.1.md). For CI / inspection contexts where you want to skip auto-install, pass `--no-install` and the wizard prints the install command at the top of its output instead.

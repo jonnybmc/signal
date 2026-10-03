@@ -1,6 +1,6 @@
 # Offline evidence brief
 
-The report app can export a self-contained `signal-evidence-brief.html` for a review or engineering handoff. This is an unreleased companion-app feature in source, not a new SDK entry point or an rc5 publication. The existing hosted URL format remains compatible.
+The report app can export a self-contained `signal-evidence-brief.html` for a review or engineering handoff. This companion-app feature is documented in rc5, alongside the separately published SDK; it is not a new SDK entry point. The existing hosted URL format remains compatible.
 
 ## Export from original aggregate JSON
 

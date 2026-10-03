@@ -1,10 +1,10 @@
 # Ad-context capture
 
-Opt-in module for capturing ad-click identifiers and UTM tags into the operator's own warehouse alongside Signal's performance events. Lets the operator analyse their paid-traffic context in their own SQL without bolting on a second SDK.
+Public contract and proposed opt-in capture specification for ad-click identifiers and UTM tags alongside performance events. Rc5 includes the contract in the repository, but the published SDK does not implement an `adContextCapture` init option. The capture behavior below describes the intended separate integration, not an enabled SDK feature.
 
 ## At a glance
 
-- **Opt-in.** Off by default. Enable via `signal.init({ adContextCapture: true })`.
+- **Proposed opt-in capture.** No automatic ad-context capture is implemented in the rc5 performance SDK.
 - **One row per session.** UPSERT-keyed by `capture_id`. SPA in-session navigations do not duplicate.
 - **Operator-only.** Captured rows write to the operator's warehouse via the existing Signal pipeline. Nothing leaves the operator's infrastructure.
 - **Coverage-aware.** Every row carries a provenance block describing what was observable at capture time (consent state, ITP heuristic, per-field presence).
@@ -77,20 +77,9 @@ import {
 
 The receiving warehouse-side validator mirrors this shape independently; drift is caught by `ad-context.test.ts` type-guard coverage.
 
-## Enabling capture in the SDK
+## Runtime availability
 
-```ts
-import { initSignal } from '@stroma-labs/signal';
-
-initSignal({
-  // ... existing options
-  adContextCapture: true
-});
-```
-
-When disabled (the default), no capture code runs, no events are produced, no warehouse columns are written. Existing installs are unaffected.
-
-When enabled, the SDK captures one row per session start (or one row per SPA route entry if the operator's pipeline treats route changes as new sessions). The capture is fire-and-forget — it does not block page render and does not delay any other Signal event emission.
+`SignalInitConfig` does not expose `adContextCapture`, and the published package does not export `initSignal`. Do not paste an enablement snippet for those names into rc5. The contract/validator above belongs to the workspace-private contracts package; operators integrating a separate capture component must implement and validate that integration themselves. A future public runtime implementation needs its own API, consent, storage and lifecycle review.
 
 ## Coverage caveats
 

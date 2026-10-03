@@ -5,16 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4. Historical release entries describe the policy at that release; the Unreleased policy supersedes rc4 for future publication.
+Release candidate `0.1.0-rc.5` uses npm `next`; stable releases use `latest`. Install rc5 explicitly with `@0.1.0-rc.5`, or follow prereleases with `@next`. This release does not promote rc5 to `latest`: unqualified installs continue to follow that separate tag. Historical entries retain the policy at each release; rc5 restores the prerelease/stable channel split.
 
 ```
-pnpm add @stroma-labs/signal                 # follows the existing latest tag
-pnpm add @stroma-labs/signal@0.1.0-rc.4      # exact rc.4 pin
+pnpm add @stroma-labs/signal@next           # prerelease channel
+pnpm add @stroma-labs/signal@0.1.0-rc.5     # exact rc.5 pin
 ```
 
 Bump the exact pin example whenever a new `-rc.N` is cut so onboarders default to the freshest pinned snapshot.
 
 ## [Unreleased]
+
+## [0.1.0-rc.5] - 2026-10-03
 
 ### Fixed — lifecycle attribution and Web Vitals
 
@@ -35,7 +37,7 @@ Bump the exact pin example whenever a new `-rc.N` is cut so onboarders default t
 ### Changed — tooling and publication policy
 
 - Apply narrow public dependency cleanup: plugin-terser 1.0.0, Vite 6.4.3, Vitest 3.2.7 and bounded PostCSS/nanoid overrides. Retain TypeScript 5.9.3 and unchanged private lockfile importer definitions. This reduces audit findings but does not resolve all advisories; PR70's major migration stays separate.
-- Resolve future prereleases to npm `next`, stable versions to `latest`, and validate release metadata. No version bump, release date or registry-tag change is included.
+- Resolve future prereleases to npm `next`, stable versions to `latest`, and validate release metadata. The package version is `0.1.0-rc.5`; the existing `latest` tag is not moved by this prerelease.
 - Isolate browser test ports, add seven reviewed macOS Chromium visual baselines, and document the tested Node/package-manager/framework matrix and remaining release gates in [rc5-validation.md](./docs/rc5-validation.md).
 
 ### Changed — URL-builder emits actionable diagnostics instead of half-baked URLs
@@ -50,13 +52,13 @@ The principle: never leave operators with a "There is no data to display" empty 
 
 `marketer-quickstart.md`, `launch-troubleshooting.md`, and `production-report-automation.md` document all three states + how downstream consumers should branch on the literal prefix (`https://signal.stroma.design/r?` for URL, otherwise diagnostic).
 
-### Fixed — URL-builder queries parse against BigQuery (rc.2-rc.4 latent regression)
+### Fixed — URL-builder SQL shapes (rc.2-rc.4 latent regression)
 
-`docs/ga4-bigquery-url-builder.sql` and `docs/normalized-bigquery-url-builder.sql` no longer fail with `Aggregate function ARRAY_AGG not allowed in UNNEST` when run against real BigQuery. The broken `top_path` correlated subquery is replaced with an exact scalar subquery using deterministic alphabetical tie-breaking; same nullability contract; same emitted `&v=<path>` URL segment.
+`docs/ga4-bigquery-url-builder.sql` and `docs/normalized-bigquery-url-builder.sql` replace the SQL shape that caused `Aggregate function ARRAY_AGG not allowed in UNNEST`. The four current real BigQuery dry-runs were not executed for rc5; see the explicit waiver below. The broken `top_path` correlated subquery is replaced with an exact scalar subquery using deterministic alphabetical tie-breaking; same nullability contract; same emitted `&v=<path>` URL segment.
 
 ### Fixed — URL-builder no longer returns NULL signal_report_url on empty data
 
-`COALESCE(ANY_VALUE(host), 'your-domain.com')` in the `counts` CTE prevents BigQuery's strict-NULL `CONCAT()` from poisoning the entire URL when `source_events` has zero rows (RC day-one operators with no captured events; operators who pasted a host that doesn't match real traffic). The URL still renders with `&s=0&b=preliminary&...`, which the `/r` cover handles via the existing sample-band banner.
+`COALESCE(ANY_VALUE(host), 'your-domain.com')` in the `counts` CTE prevents BigQuery's strict-NULL `CONCAT()` from poisoning the entire URL when `source_events` has zero rows (RC day-one operators with no captured events; operators who pasted a host that doesn't match real traffic). The later three-state output emits a `NO_EVENTS_IN_WINDOW` diagnostic for this case rather than a zero-sample report URL. The fallback host keeps that diagnostic non-null.
 
 ### Added — Regex tests + RELEASE-GATE manual dry-run for SQL templates
 
@@ -78,6 +80,21 @@ Three new regex tests in `packages/signal-contracts/test/sql-templates.test.ts` 
 - `operator-expectations.md` browser-support matrix aligned with `signal-technical-reference.md` — LCP / CLS / INP are Chromium-only; FCP and TTFB are universal. The previous claim that all CWV are supported on Safari 16+ / Firefox was wrong.
 
 The browser-brand assumptions in the earlier doc sweep above are superseded by the current feature-detected presence rules; even broadly supported vitals can be null.
+
+### Additional changes since rc4
+
+- Complete URL-builder repair with a distinct `comparison_tier_lookup` CTE, explicit grouping in `funnel_rollup`, and an anchored left join so an empty source cannot remove the final diagnostic row. Keep scalar/aggregate/empty-input regression guards in the SQL tests.
+- Add the public `SignalAdContextCaptureV1` contract and specification. This is a contract/spec addition, not a new `init()` runtime capture option in the published SDK.
+- Add and reconcile privacy, retention, data-flow, erasure, subprocessors and architecture documentation. Clarify that paths/labels can identify, that hosted report URL queries reach Cloudflare logs, and that offline export has a separate data flow.
+- Update existing GitHub Actions dependencies and synchronize the retained private workspace lockfile. No runtime dependency is added. Correct package repository/homepage/issues metadata and release-readiness assertions to `jonnybmc/signal` for provenance after the rename.
+
+### Validation, waiver and remaining limits
+
+The user authorized this rc5 prerelease with the four real BigQuery dry-runs **waived, not passed**. They remain unrun. This version-specific exception supersedes PR72's merge-only restriction for rc5; it is not a waiver for later releases. SQL regex tests do not prove live BigQuery execution.
+
+Preparation evidence includes 3,700 unit tests, the existing lint/types/build/budget/pack gates, npm/pnpm/yarn/Bun pack checks, Node 18/20/22/24 consumer checks, five fresh Chromium/dataLayer framework smokes and macOS Chromium/Firefox/WebKit browser checks. See [validation evidence](./docs/rc5-validation.md) for exact versions, final release checks and scope.
+
+This remains a release candidate, not a stable-production certification. Live GTM/GA4/warehouse validation remains unverified; direct report-app typechecking retains 17 baseline errors; the recorded full-lock audit retains 27 advisories (1 critical, 3 high, 21 moderate, 2 low), including the unchanged private graph; Linux/Windows visual coverage remains unverified. The SDK has zero runtime dependencies. These findings remain open and are not described as passed or security-clean. npm authorization and provenance must succeed through the existing OIDC workflow before publication is confirmed.
 
 ## [0.1.0-rc.4] - 2026-05-08
 
