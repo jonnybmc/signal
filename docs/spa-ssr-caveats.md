@@ -35,7 +35,7 @@ This is intentional. Soft navigation support is not first-class in v0.1. The per
 
 A `markRoute()` API for opt-in per-route INP / CLS / LCP capture in SPAs is being considered for v0.2. The shape, tradeoffs, and open questions are tracked in [RFC 0001](./rfcs/0001-soft-navigation-markroute.md) — comments and pushback welcome before it gets implemented.
 
-In the unreleased measurement fixes, entry path/referrer and visibility are captured when observation starts, not when it flushes. Initialize early; the SDK cannot recover a route changed before `init()`. Prerender activation and bfcache restore take fresh context snapshots. The first hide or manual flush ends that lifecycle's measurement; later activity in the same lifecycle is not continuously reported.
+From rc5, entry path/referrer and visibility are captured when observation starts, not when it flushes. Initialize early; the SDK cannot recover a route changed before `init()`. Prerender activation and bfcache restore take fresh context snapshots. The first hide or manual flush ends that lifecycle's measurement; later activity in the same lifecycle is not continuously reported.
 
 The [validation record](./rc5-validation.md#fresh-framework-matrix) lists exact tested framework versions. Fresh framework smokes used Chromium and the dataLayer sink; this is not a claim that every framework/sink/browser combination was exercised.
 

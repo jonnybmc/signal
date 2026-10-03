@@ -4,7 +4,7 @@ Use this as the final release and launch gate for `@stroma-labs/signal` v0.1. It
 
 ## Merge and publication are separate
 
-PR72's missing BigQuery validations were accepted **for that merge only**; they remain unrun, not passed. See the [scoped waiver](../packages/signal/RELEASE-GATE.md#pr72-merge-waiver--bigquery-only) and [validation evidence](./rc5-validation.md). Other release gates and existing debt were not blanket-waived.
+PR72's original BigQuery waiver covered its merge only. The user subsequently authorized the rc5 prerelease with the four dry-runs still **unrun, waived rather than passed**; see the [rc5-specific exception](../packages/signal/RELEASE-GATE.md#rc5-publication-exception--bigquery-unrun). Later releases do not inherit this exception. See the [scoped waiver](../packages/signal/RELEASE-GATE.md#pr72-merge-waiver--bigquery-only) and [validation evidence](./rc5-validation.md). Other release gates and existing debt were not blanket-waived.
 
 A merge to `main` runs CI and may update the hosted report through the connected Cloudflare Pages integration. The npm workflow runs only on a published GitHub Release or manual dispatch with an explicit tag. It sends prereleases to `next` and stable versions to `latest`, validating version/tag/prerelease metadata. Merging does not create a release or move existing npm tags.
 
@@ -16,7 +16,7 @@ Before the first public publish:
 - confirm the publishing account has permission to publish `@stroma-labs/signal`
 - confirm the npm Trusted Publisher policy on `@stroma-labs/signal` matches this repo + the `Publish` workflow on `main` (Settings → Trusted publishers on npmjs.com). Trusted Publishing is the auth model — there is no `NPM_TOKEN` secret, and adding one would be a regression.
 - confirm the publish workflow still keeps `id-token: write` plus `npm publish --provenance`
-- confirm the release target is the canonical repo: `jonnybmc/signal`. The package metadata/readiness assertions still contain the legacy `jonnybmc/stroma-signal` name; verify the npm Trusted Publisher repository/workflow binding after the rename before publishing. This checklist does not change credentials or access policy.
+- confirm the release target is the canonical repo: `jonnybmc/signal`. Package metadata/readiness assertions now use the canonical repository. Verify the existing npm Trusted Publisher repository/workflow binding after the rename; public metadata alone does not establish that binding. This checklist does not change credentials or access policy.
 
 ## 2. Repo Gates
 

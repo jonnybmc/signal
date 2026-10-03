@@ -16,7 +16,7 @@ Each page load produces a single JSON event with the following structure.
 | `event_id` | `string` | Per-page-load identifier for deduplication and warehouse joins. Not a user identifier. |
 | `ts` | `number` | Unix timestamp (milliseconds) when the event was finalized. |
 | `host` | `string` | Origin hostname. |
-| `url` | `string` | Page path. Unreleased fixes snapshot it at observation start, activation or restore. |
+| `url` | `string` | Page path. Rc5 fixes snapshot it at observation start, activation or restore. |
 | `ref` | `string \| null` | Referrer origin + path (query/hash stripped; remaining path may still identify). |
 
 ### Network classification
@@ -49,7 +49,7 @@ Each page load produces a single JSON event with the following structure.
 
 All vitals are nullable. Feature availability, early flushing, background starts and non-load lifecycle policy affect presence; browser brand alone does not establish coverage. Signal does not fabricate missing metrics. The [validation matrix](./rc5-validation.md) records tested environments, not a guarantee that every performance API exists in them.
 
-#### Measurement semantics (unreleased fixes)
+#### Measurement semantics (rc5 fixes)
 
 - Page/referrer paths and visibility are captured at observation start, after prerender activation and again on bfcache restore. A later soft navigation does not replace entry attribution or begin a new lifecycle.
 - CLS is the maximum session-window sum. Consecutive eligible shifts must be less than 1,000 ms apart and less than 5,000 ms from the window's first shift. A supported foreground observation with FCP, or a visible restored lifecycle, can report zero; unsupported, background or pre-paint observations remain null.
@@ -67,7 +67,7 @@ These fields enrich the core vitals with diagnostic context when the browser sup
 | `lcp_attribution.load_state` | `'loading' \| 'interactive' \| 'complete'` | Page load state when LCP occurred. |
 | `lcp_attribution.target` | `string \| null` | Human-readable LCP element description. |
 | `lcp_attribution.element_type` | `'image' \| 'text' \| null` | LCP element category. |
-| `lcp_attribution.resource_url` | `string \| null` | Origin + pathname, with query/fragment stripped. Paths and hosts can still identify resources; the unreleased `normalizePath` hook can template or omit the path. |
+| `lcp_attribution.resource_url` | `string \| null` | Origin + pathname, with query/fragment stripped. Paths and hosts can still identify resources; the rc5 `normalizePath` hook can template or omit the path. |
 | `lcp_attribution.culprit_kind` | `'hero_image' \| 'headline_text' \| 'banner_image' \| 'product_image' \| 'video_poster' \| 'unknown' \| null` | Classifier label for the LCP element's editorial role. Null when classification falls through or `element_type` is null. |
 
 **INP attribution:**
@@ -178,7 +178,7 @@ These signals are collected for cross-reference but do not feed tier classificat
 | `context.rtt_ms` | `number \| null` | Chromium-only | Estimated round-trip time. Smoothed. Often diverges from TCP connect time. |
 | `context.save_data` | `boolean \| null` | Chromium-only | Whether the user has requested reduced data usage. |
 | `context.connection_type` | `string \| null` | Chromium Android only | Physical connection type: wifi, cellular, ethernet. Very limited availability. |
-| `context.visibility_hidden_at_load` | `boolean \| undefined` | Universal | `true` when observation starts hidden. In the unreleased fixes, this is snapshotted at lifecycle start, after prerender activation, and afresh on bfcache restore; finalization visibility does not overwrite it. Default report aggregation pre-filters rows where this is `true` so background loads do not poison percentiles. |
+| `context.visibility_hidden_at_load` | `boolean \| undefined` | Universal | `true` when observation starts hidden. From rc5, this is snapshotted at lifecycle start, after prerender activation, and afresh on bfcache restore; finalization visibility does not overwrite it. Default report aggregation pre-filters rows where this is `true` so background loads do not poison percentiles. |
 
 ### Metadata
 

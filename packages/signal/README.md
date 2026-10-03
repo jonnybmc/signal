@@ -1,7 +1,7 @@
 # Signal
 
-> 🧪 **Release Candidate** — package version `0.1.0-rc.4`; this source README also describes unreleased rc5 preparation.
-> The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4.
+> 🧪 **Release Candidate** — package version `0.1.0-rc.5`; this is a prerelease for pilot use.
+> Release candidate `0.1.0-rc.5` uses npm `next`; stable releases use `latest`. Install rc5 explicitly with `@0.1.0-rc.5`, or follow prereleases with `@next`. This release does not promote rc5 to `latest`: unqualified installs continue to follow that separate tag.
 > The `0.x` line is pre-stable; the API can change before `1.0`.
 > See [CHANGELOG.md](https://github.com/jonnybmc/signal/blob/main/CHANGELOG.md) for what shipped and what closes the next version.
 
@@ -10,12 +10,12 @@ A small library that measures what your real users actually experience — their
 ## Install
 
 ```bash
-pnpm add @stroma-labs/signal
+pnpm add @stroma-labs/signal@0.1.0-rc.5
 ```
 
 `pnpm`, `npm`, and `yarn` all work. Signal is ESM-only.
 
-If you want to pin to a specific rc instead of tracking `latest`, use the exact version: `pnpm add @stroma-labs/signal@0.1.0-rc.4`.
+Use `pnpm add @stroma-labs/signal@next` to follow the prerelease channel. Unqualified installs follow `latest`, which this release does not change.
 
 ## What ships
 
@@ -127,9 +127,9 @@ That confirms the tarball you installed was built by [this repository's publish 
 MIT — see [LICENSE](https://github.com/jonnybmc/signal/blob/main/LICENSE).
 
 
-## Optional route templates (unreleased)
+## Optional route templates (rc5)
 
-The following additive API and measurement fixes are in source and are not included in the published rc4 tarball.
+The following additive API and measurement fixes are included from rc5. They are not present in rc4.
 
 ```ts
 init({

@@ -1,5 +1,23 @@
 # RC5 preparation: validation and remaining gates
 
+The original PR72 evidence below is retained as history. The user subsequently authorized rc5 publication, with BigQuery explicitly waived/unrun for rc5 only. Release preparation uses `codex/release-0.1.0-rc.5` from merged main `b7ff1020961e6fd33a4044149ed6ef07fb57ead0`, updates the SDK to `0.1.0-rc.5`, and targets npm `next` without moving `latest`. The rc5 changelog section is the version-level source of truth; final release/registry checks are recorded below and on the release PR.
+
+## Release preflight
+
+GitHub repository access and the existing `id-token: write` workflow were verified read-only. Prior OIDC publication succeeded. The Mac's `npm trust list` returned 401, so the npm-side binding could not be inspected locally; it is not marked verified. Metadata/readiness checks now match `jonnybmc/signal`, as required for provenance. No credential or access-policy changes were made. Registry publication must succeed using the existing workflow before rc5 is described as live.
+
+## Rc5 release-candidate checks
+
+The rc5 candidate passed `pnpm run ci` on Node 24.21.0: 3,700 tests across 55 files, existing lint/root types/build/export/boundary/budget and metadata/pack checks. The three vanilla snippet snapshots changed only their four CDN pins from rc4 to rc5. A stale local rc4 CLI build was rebuilt before the passing run; a completed sandbox build that did not exit was terminated, and the normal permitted CI/build/pack commands exited successfully.
+
+`pnpm test:cli:pack` passed with npm, pnpm, yarn and Bun. `pnpm test:e2e --update-snapshots=none` passed **76 tests**, with **14 intentional non-Chromium visual skips** and no failures. No visual baselines changed.
+
+The five isolated framework fixtures created during this preparation were reinstalled from the rc5 tarball with offline dependency resolution, regenerated CLI output, and rebuilt where applicable. Next App Router, React Router, Remix, SvelteKit and vanilla all passed Chromium/dataLayer checks (initialization, finite LCP, one event, duplicate suppression, no external requests/page errors). The local rc5 package's four imports and CLI passed on Node 18.20.8, 20.20.2, 22.23.3 and 24.21.0. These checks do not cover every sink/browser combination or prove hosted warehouse ingestion.
+
+The rc4-and-earlier changelog suffix is byte-for-byte identical to merged main (SHA-256 `6fa744c6bd861349db9a087038660762a817260df11370daf804f73f8e69293a`). Relative documentation links and whitespace checks pass. Release notes are extracted from the rc5 changelog section; the publication date must match the actual UTC GitHub release date before publishing. Registry, dist-tag, provenance and fresh published-install results are recorded on the release PR after the workflow completes; they are not pre-claimed here.
+
+## Historical PR72 preparation
+
 This records PR72 preparation and local validation, not release approval. Base: `8185b8460297f953df727af93e8f5c5c7f6c204d`.
 Branch: `codex/rc5-evidence-preparation`. SDK version remains `0.1.0-rc.4`.
 The initial local validation created no remote changes. The branch was subsequently pushed as [PR72](https://github.com/jonnybmc/signal/pull/72); the user then authorized documentation reconciliation and normal merge with the scoped BigQuery waiver below. No release date, version bump, tag, npm publication or schedule is authorized by that merge approval.

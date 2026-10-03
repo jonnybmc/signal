@@ -2,7 +2,7 @@
 
 Copy-paste installation snippets for common environments.
 
-> **Most operators should start with `npx @stroma-labs/signal init`** — the wizard detects your framework and generates the right snippet. This doc is the manual reference behind it for engineers who prefer copy-paste, and the source of truth for what the wizard generates. Last verified against current upstream docs: **2026-05-03** (see [packages/signal/src/cli/RECIPE-CURRENCY-SWEEP.md](../packages/signal/src/cli/RECIPE-CURRENCY-SWEEP.md) for the quarterly sweep schedule and [packages/signal/src/cli/snippets/recipe-currency-data.json](../packages/signal/src/cli/snippets/recipe-currency-data.json) for the per-recipe version pins).
+> **Most operators should start with `npx @stroma-labs/signal@0.1.0-rc.5 init`** — the wizard detects your framework and generates the right snippet. This doc is the manual reference behind it for engineers who prefer copy-paste, and the source of truth for what the wizard generates. Last verified against current upstream docs: **2026-05-03** (see [packages/signal/src/cli/RECIPE-CURRENCY-SWEEP.md](../packages/signal/src/cli/RECIPE-CURRENCY-SWEEP.md) for the quarterly sweep schedule and [packages/signal/src/cli/snippets/recipe-currency-data.json](../packages/signal/src/cli/snippets/recipe-currency-data.json) for the per-recipe version pins).
 
 Signal is framework-agnostic. These are installation notes, not framework integrations. Each recipe answers:
 

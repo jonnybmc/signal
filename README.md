@@ -4,8 +4,8 @@
 [![npm](https://img.shields.io/npm/v/@stroma-labs/signal?label=npm)](https://www.npmjs.com/package/@stroma-labs/signal)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-> 🧪 **Release Candidate** — the API can change before `1.0`. The source tree includes unreleased rc5 preparation; the package version remains `0.1.0-rc.4`.
-> The publication workflow sends future prereleases (`-rc.N`, `-beta.N`) to npm `next` and stable releases to `latest`. It does not move existing tags on merge. Registry verification for PR72 found `latest = 0.1.0-rc.4` and `next = 0.1.0-rc.3`; use an exact version for reproducible installs. Unreleased changes below are not part of published rc4.
+> 🧪 **Release Candidate** — the API can change before `1.0`. This source tree prepares `0.1.0-rc.5`; see the versioned changelog and GitHub release for publication status.
+> Release candidate `0.1.0-rc.5` uses npm `next`; stable releases use `latest`. Install rc5 explicitly with `@0.1.0-rc.5`, or follow prereleases with `@next`. This release does not promote rc5 to `latest`: unqualified installs continue to follow that separate tag.
 
 **Other RUM tools tell you what your average user experiences. Signal tells you _who_ is getting which experience — and lets you act on it.**
 
@@ -43,7 +43,7 @@ Signal is the evidence layer underneath whatever you already use. GA4 keeps doin
 One command — detects your framework, asks 3-4 questions, auto-installs `@stroma-labs/signal` via your project's package manager, then prints the framework-correct snippet for you to paste:
 
 ```bash
-npx @stroma-labs/signal init
+npx @stroma-labs/signal@0.1.0-rc.5 init
 ```
 
 That's it. The wizard never modifies source files; it only adds the runtime SDK to your `package.json` and prints the snippets. Pass `--no-install` to skip the auto-install (CI / inspection contexts).
@@ -104,7 +104,7 @@ One event per page load with:
 - **Long Animation Frame** attribution on Chromium 123+
 - **Background-tab filter** so percentiles aren't poisoned by hidden-tab loads
 
-No cookies are set by the core SDK. It captures page/referrer paths and selected resource context; those paths can contain personal or business identifiers. Query strings and fragments are stripped, but that does not guarantee the remaining path is anonymous. In the unreleased source, use the opt-in [`normalizePath` hook](./docs/client-integrations.md#optional-path-normalization-unreleased), or sanitise your sink output on existing releases. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
+No cookies are set by the core SDK. It captures page/referrer paths and selected resource context; those paths can contain personal or business identifiers. Query strings and fragments are stripped, but that does not guarantee the remaining path is anonymous. In rc5, use the opt-in [`normalizePath` hook](./docs/client-integrations.md#optional-path-normalization-rc5), or sanitise your sink output on existing releases. The runtime is opinionated about what *not* to capture — see [why-signal.md](./docs/why-signal.md) for the deliberate exclusions.
 
 ## From SDK to shareable report URL
 
